@@ -22,7 +22,7 @@ defmodule CheckDay.Accounts.User.Senders.SendMagicLinkEmail do
 
     new()
     # TODO: Replace with your email
-    |> from({"noreply", "noreply@example.com"})
+    |> from({"noreply", "noreply@check.day"})
     |> to(to_string(email))
     |> subject("Your login link")
     |> html_body(body(token: token, email: email))
