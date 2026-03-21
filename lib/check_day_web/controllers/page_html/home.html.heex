@@ -1,39 +1,87 @@
 <Layouts.flash_group flash={@flash} />
-<div class="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-16">
-  <div class="max-w-2xl mx-auto flex flex-col items-center text-center">
-    <%!-- Logo --%>
-    <div class="mb-12">
+<div class="min-h-screen bg-white flex flex-col">
+  <%!-- Header --%>
+  <header class="w-full px-6 sm:px-10 py-5 flex items-center justify-between" id="main-header">
+    <a href="/" class="flex items-center gap-2.5 group" id="header-logo-link">
       <img
         src={~p"/images/logo.svg"}
         alt="Check.Day logo"
-        class="w-28 h-28 sm:w-36 sm:h-36 drop-shadow-lg"
-        id="check-day-logo"
+        class="w-8 h-8 transition-transform group-hover:scale-105"
       />
+      <span class="text-lg font-bold text-gray-900 tracking-tight">
+        Check<span class="text-[oklch(70%_0.213_47.604)]">.</span>Day
+      </span>
+    </a>
+    <a
+      href={~p"/dashboard"}
+      class={[
+        "inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold",
+        "text-gray-700 border border-gray-200 bg-white",
+        "hover:bg-gray-50 hover:border-gray-300 hover:text-gray-900",
+        "transition-all duration-200"
+      ]}
+      id="header-sign-in"
+    >
+      Sign in
+      <.icon name="hero-arrow-right-mini" class="w-4 h-4" />
+    </a>
+  </header>
+
+  <%!-- Hero --%>
+  <main class="flex-1 flex flex-col items-center justify-center px-6 py-16">
+    <div class="max-w-2xl mx-auto flex flex-col items-center text-center">
+      <%!-- Logo --%>
+      <div class="mb-10">
+        <img
+          src={~p"/images/logo.svg"}
+          alt="Check.Day logo"
+          class="w-28 h-28 sm:w-36 sm:h-36 drop-shadow-lg"
+          id="check-day-logo"
+        />
+      </div>
+
+      <%!-- Title --%>
+      <h1
+        class="text-5xl sm:text-6xl font-bold tracking-tight text-gray-900 mb-4"
+        id="check-day-title"
+      >
+        Check<span class="text-[oklch(70%_0.213_47.604)]">.</span>Day
+      </h1>
+
+      <%!-- Subtitle --%>
+      <p
+        class="text-xl sm:text-2xl font-medium text-[oklch(70%_0.213_47.604)] mb-8 tracking-wide"
+        id="check-day-subtitle"
+      >
+        Wake up to what matters
+      </p>
+
+      <%!-- Description --%>
+      <p
+        class="text-base sm:text-lg leading-relaxed text-gray-600 max-w-xl mb-12"
+        id="check-day-description"
+      >
+        Swap your blaring alarm for a bespoke, personalized morning podcast generated while you sleep.
+        Stop the morning doomscroll and start your day perfectly informed, entirely hands-free.
+      </p>
+
+      <%!-- CTA Buttons --%>
+      <div class="flex flex-col sm:flex-row items-center gap-4" id="cta-buttons">
+        <a
+          href={~p"/dashboard"}
+          class={[
+            "inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full",
+            "text-base font-semibold text-white",
+            "bg-[oklch(70%_0.213_47.604)] hover:bg-[oklch(63%_0.213_47.604)]",
+            "shadow-lg shadow-[oklch(70%_0.213_47.604)]/25 hover:shadow-xl hover:shadow-[oklch(70%_0.213_47.604)]/30",
+            "transition-all duration-200 hover:-translate-y-0.5"
+          ]}
+          id="cta-get-started-primary"
+        >
+          Get started
+          <.icon name="hero-arrow-right-mini" class="w-5 h-5" />
+        </a>
+      </div>
     </div>
-
-    <%!-- Title --%>
-    <h1
-      class="text-5xl sm:text-6xl font-bold tracking-tight text-gray-900 mb-4"
-      id="check-day-title"
-    >
-      Check<span class="text-[oklch(70%_0.213_47.604)]">.</span>Day
-    </h1>
-
-    <%!-- Subtitle --%>
-    <p
-      class="text-xl sm:text-2xl font-medium text-[oklch(70%_0.213_47.604)] mb-8 tracking-wide"
-      id="check-day-subtitle"
-    >
-      Wake up to what matters
-    </p>
-
-    <%!-- Description --%>
-    <p
-      class="text-base sm:text-lg leading-relaxed text-gray-600 max-w-xl"
-      id="check-day-description"
-    >
-      Swap your blaring alarm for a bespoke, personalized morning podcast generated while you sleep.
-      Stop the morning doomscroll and start your day perfectly informed, entirely hands-free.
-    </p>
-  </div>
+  </main>
 </div>

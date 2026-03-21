@@ -1,20 +1,13 @@
 defmodule CheckDayWeb.AuthOverrides do
   use AshAuthentication.Phoenix.Overrides
 
-  # configure your UI overrides here
-
-  # First argument to `override` is the component name you are overriding.
-  # The body contains any number of configurations you wish to override
-  # Below are some examples
-
-  # For a complete reference, see https://hexdocs.pm/ash_authentication_phoenix/ui-overrides.html
-
-  # override AshAuthentication.Phoenix.Components.Banner do
-  #   set :image_url, "https://media.giphy.com/media/g7GKcSzwQfugw/giphy.gif"
-  #   set :text_class, "bg-red-500"
-  # end
-
-  # override AshAuthentication.Phoenix.Components.SignIn do
-  #  set :show_banner, false
-  # end
+  override AshAuthentication.Phoenix.Components.Banner do
+    set :root_class, "flex flex-col items-center justify-center py-6"
+    set :image_url, "/images/logo.svg"
+    set :dark_image_url, nil
+    set :image_class, "w-16 h-16"
+    set :href_url, nil
+    set :text, "Check.Day"
+    set :text_class, "text-2xl font-bold text-gray-900 dark:text-white tracking-tight mt-3"
+  end
 end

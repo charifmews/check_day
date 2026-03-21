@@ -27,9 +27,9 @@ defmodule CheckDayWeb.Layouts do
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
 
-  attr :current_scope, :map,
+  attr :current_user, :map,
     default: nil,
-    doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
+    doc: "the currently authenticated user, if any"
 
   slot :inner_block, required: true
 
@@ -37,28 +37,30 @@ defmodule CheckDayWeb.Layouts do
     ~H"""
     <header class="navbar px-4 sm:px-6 lg:px-8">
       <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
+        <a href="/" class="flex items-center gap-2.5 group">
+          <img src={~p"/images/logo.svg"} class="w-8 h-8 transition-transform group-hover:scale-105" />
+          <span class="text-lg font-bold text-gray-900 tracking-tight">
+            Check<span class="text-[oklch(70%_0.213_47.604)]">.</span>Day
+          </span>
         </a>
       </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
-        </ul>
+      <div class="flex-none flex items-center gap-3">
+        <.theme_toggle />
+        <%= if @current_user do %>
+          <a
+            href="/sign-out"
+            class={[
+              "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium",
+              "text-gray-600 border border-gray-200 bg-white",
+              "hover:bg-red-50 hover:border-red-200 hover:text-red-600",
+              "transition-all duration-200"
+            ]}
+            id="header-sign-out"
+          >
+            <.icon name="hero-arrow-right-start-on-rectangle-mini" class="w-4 h-4" />
+            Sign out
+          </a>
+        <% end %>
       </div>
     </header>
 

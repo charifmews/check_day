@@ -35,6 +35,7 @@ defmodule CheckDayWeb.Router do
       #
       # If an authenticated user must *not* be present:
       # on_mount {CheckDayWeb.LiveUserAuth, :live_no_user}
+      live "/dashboard", DashboardLive
     end
   end
 
