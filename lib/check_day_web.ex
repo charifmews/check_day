@@ -17,7 +17,9 @@ defmodule CheckDayWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
+  def static_paths,
+    do:
+      ~w(assets fonts images favicon.ico robots.txt site.webmanifest apple-touch-icon.png favicon-96x96.png favicon-192x192.png favicon-512x512.png favicon.svg)
 
   def router do
     quote do
