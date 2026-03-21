@@ -114,6 +114,11 @@ if config_env() == :prod do
     adapter: Swoosh.Adapters.Postmark,
     api_key: System.get_env("POSTMARK_API_KEY")
 
+  config :firecrawl,
+    api_key:
+      System.get_env("FIRECRAWL_API_KEY") ||
+        raise("Missing environment variable `FIRECRAWL_API_KEY`!")
+
   #       domain: System.get_env("MAILGUN_DOMAIN")
   #
   # Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,
