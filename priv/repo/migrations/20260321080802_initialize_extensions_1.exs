@@ -8,6 +8,8 @@ defmodule CheckDay.Repo.Migrations.InitializeExtensions1 do
   use Ecto.Migration
 
   def up do
+    execute("CREATE EXTENSION IF NOT EXISTS \"citext\"")
+
     execute("""
     CREATE OR REPLACE FUNCTION ash_elixir_or(left BOOLEAN, in right ANYCOMPATIBLE, out f1 ANYCOMPATIBLE)
     AS $$ SELECT COALESCE(NULLIF($1, FALSE), $2) $$

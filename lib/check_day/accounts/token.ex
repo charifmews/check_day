@@ -3,7 +3,13 @@ defmodule CheckDay.Accounts.Token do
     otp_app: :check_day,
     domain: CheckDay.Accounts,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshAuthentication.TokenResource]
+    extensions: [AshAuthentication.TokenResource],
+    data_layer: AshPostgres.DataLayer
+
+  postgres do
+    table "tokens"
+    repo CheckDay.Repo
+  end
 
   actions do
     defaults [:read]
