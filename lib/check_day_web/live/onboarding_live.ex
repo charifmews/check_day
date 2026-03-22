@@ -21,6 +21,7 @@ defmodule CheckDayWeb.OnboardingLive do
      socket
      |> assign(:conversation_status, :idle)
      |> assign(:first_name, user.first_name || "")
+     |> assign(:digest_times, user.digest_times || default_digest_times())
      |> assign(:transcript, [])
      |> stream(:digest_blocks, blocks)
      |> assign(:blocks_empty?, blocks == [])}
@@ -77,6 +78,21 @@ defmodule CheckDayWeb.OnboardingLive do
     {:noreply, assign(socket, :conversation_status, :idle)}
   end
 
+  def handle_event("update_digest_time", %{"time" => time_str}, socket) do
+    user = socket.assigns.current_user
+    current_times = socket.assigns.digest_times
+    # Set the same time for all days from onboarding
+    new_times = Map.new(current_times, fn {k, _v} -> {k, time_str} end)
+
+    case Ash.update(user, %{digest_times: new_times},
+           action: :update_profile,
+           authorize?: false
+         ) do
+      {:ok, _} -> {:noreply, assign(socket, :digest_times, new_times)}
+      {:error, _} -> {:noreply, put_flash(socket, :error, "Failed to update time")}
+    end
+  end
+
   # PubSub handlers for real-time updates from the API controller
   @impl true
   def handle_info({:digest_update, {:block_added, block}}, socket) do
@@ -97,6 +113,29 @@ defmodule CheckDayWeb.OnboardingLive do
 
   def handle_info({:digest_update, :onboarding_completed}, socket) do
     {:noreply, push_navigate(socket, to: ~p"/dashboard")}
+  end
+
+  def handle_info({:digest_update, {:digest_times_changed, times}}, socket) do
+    {:noreply, assign(socket, :digest_times, times)}
+  end
+
+  def handle_info({:digest_update, _}, socket), do: {:noreply, socket}
+
+  defp default_digest_times do
+    %{
+      "1" => "07:00",
+      "2" => "07:00",
+      "3" => "07:00",
+      "4" => "07:00",
+      "5" => "07:00",
+      "6" => "07:00",
+      "7" => "07:00"
+    }
+  end
+
+  defp first_digest_time(digest_times) do
+    # Show the most common time (typically all are the same during onboarding)
+    Map.get(digest_times, "1", "07:00")
   end
 
   defp load_user_blocks(user_id) do
@@ -293,6 +332,24 @@ defmodule CheckDayWeb.OnboardingLive do
               <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
                 Your Daily Digest
               </h3>
+
+              <%!-- Digest Time Picker --%>
+              <div
+                class="flex items-center gap-2 mb-4 p-3 rounded-xl bg-indigo-50/50 border border-indigo-100"
+                id="onboarding-time-picker"
+              >
+                <.icon name="hero-clock" class="w-4 h-4 text-indigo-500" />
+                <span class="text-sm text-gray-600">Daily at</span>
+                <input
+                  type="time"
+                  value={first_digest_time(@digest_times)}
+                  phx-change="update_digest_time"
+                  phx-debounce="500"
+                  name="time"
+                  id="onboarding-time-input"
+                  class="text-sm font-semibold text-indigo-700 bg-transparent border-none p-0 cursor-pointer focus:ring-0 w-[70px]"
+                />
+              </div>
 
               <div id="digest-blocks" phx-update="stream">
                 <div

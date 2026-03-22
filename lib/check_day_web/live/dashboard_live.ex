@@ -30,6 +30,7 @@ defmodule CheckDayWeb.DashboardLive do
        |> assign(:blocks, blocks)
        |> assign(:user_active_days, user.active_days || [1, 2, 3, 4, 5, 6, 7])
        |> assign(:skipped_dates, user.skipped_dates || [])
+       |> assign(:digest_times, user.digest_times || default_digest_times())
        |> assign(:open_day_menu, nil)}
     end
   end
@@ -146,6 +147,20 @@ defmodule CheckDayWeb.DashboardLive do
     end
   end
 
+  def handle_event("update_digest_time", %{"day" => day_str, "time" => time_str}, socket) do
+    user = socket.assigns.current_user
+    current_times = socket.assigns.digest_times
+    new_times = Map.put(current_times, day_str, time_str)
+
+    case Ash.update(user, %{digest_times: new_times},
+           action: :update_profile,
+           authorize?: false
+         ) do
+      {:ok, _} -> {:noreply, assign(socket, :digest_times, new_times)}
+      {:error, _} -> {:noreply, put_flash(socket, :error, "Failed to update time")}
+    end
+  end
+
   # PubSub handlers
   @impl true
   def handle_info({:digest_update, {:block_added, _block}}, socket) do
@@ -156,6 +171,10 @@ defmodule CheckDayWeb.DashboardLive do
   def handle_info({:digest_update, {:block_removed, _block}}, socket) do
     blocks = load_user_blocks(socket.assigns.current_user.id)
     {:noreply, assign(socket, :blocks, blocks)}
+  end
+
+  def handle_info({:digest_update, {:digest_times_changed, times}}, socket) do
+    {:noreply, assign(socket, :digest_times, times)}
   end
 
   def handle_info({:digest_update, _}, socket), do: {:noreply, socket}
@@ -174,6 +193,23 @@ defmodule CheckDayWeb.DashboardLive do
   defp day_name(date), do: Calendar.strftime(date, "%a")
   defp day_number(date), do: Calendar.strftime(date, "%d")
   defp full_day_name(date), do: Calendar.strftime(date, "%A")
+
+  defp default_digest_times do
+    %{
+      "1" => "07:00",
+      "2" => "07:00",
+      "3" => "07:00",
+      "4" => "07:00",
+      "5" => "07:00",
+      "6" => "07:00",
+      "7" => "07:00"
+    }
+  end
+
+  defp get_day_time(digest_times, day) do
+    key = Integer.to_string(Date.day_of_week(day))
+    Map.get(digest_times, key, "07:00")
+  end
 
   defp month_label(week_start) do
     week_end = Date.add(week_start, 6)
@@ -272,9 +308,11 @@ defmodule CheckDayWeb.DashboardLive do
             <h1 class="text-3xl font-bold text-gray-900" id="dashboard-title">
               Your Week
             </h1>
-            <p class="text-gray-500 mt-1" id="dashboard-subtitle">
-              {month_label(@week_start)}
-            </p>
+            <div class="flex items-center gap-3 mt-1">
+              <p class="text-gray-500" id="dashboard-subtitle">
+                {month_label(@week_start)}
+              </p>
+            </div>
           </div>
 
           <div class="flex items-center gap-2">
@@ -354,18 +392,23 @@ defmodule CheckDayWeb.DashboardLive do
               id={"day-#{day}"}
             >
               <%!-- Day Header --%>
-              <div class={[
-                "px-3 py-3 border-b shrink-0 rounded-t-xl relative",
-                "transition-all duration-200",
-                cond do
-                  is_disabled ->
-                    "border-gray-200 bg-gray-100/50"
-                  day == @today ->
-                    "border-indigo-200/60 bg-indigo-50/50"
-                  true ->
-                    "border-gray-100"
-                end
-              ]} id={"day-header-#{day}"}>
+              <div
+                class={[
+                  "px-3 py-3 border-b shrink-0 rounded-t-xl relative",
+                  "transition-all duration-200",
+                  cond do
+                    is_disabled ->
+                      "border-gray-200 bg-gray-100/50"
+
+                    day == @today ->
+                      "border-indigo-200/60 bg-indigo-50/50"
+
+                    true ->
+                      "border-gray-100"
+                  end
+                ]}
+                id={"day-header-#{day}"}
+              >
                 <%!-- Menu icon button --%>
                 <button
                   phx-click="toggle_day_menu"
@@ -402,6 +445,24 @@ defmodule CheckDayWeb.DashboardLive do
                   ]}>
                     {day_number(day)}
                   </p>
+                  <%= unless is_disabled do %>
+                    <form
+                      phx-change="update_digest_time"
+                      id={"time-form-#{day}"}
+                      class="flex items-center justify-center mt-1.5"
+                    >
+                      <input type="hidden" name="day" value={Integer.to_string(Date.day_of_week(day))} />
+                      <input
+                        type="time"
+                        value={get_day_time(@digest_times, day)}
+                        phx-debounce="500"
+                        name="time"
+                        id={"time-#{day}"}
+                        phx-hook=".TimePicker"
+                        class="text-xs font-medium text-indigo-600 bg-indigo-50/50 border border-indigo-100 rounded-md px-1.5 py-0.5 cursor-pointer focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300 w-[85px] text-center"
+                      />
+                    </form>
+                  <% end %>
                 </div>
 
                 <%!-- Status badge below number --%>
@@ -577,6 +638,17 @@ defmodule CheckDayWeb.DashboardLive do
         <% end %>
       </div>
     </Layouts.app>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".TimePicker">
+      export default {
+        mounted() {
+          this.el.addEventListener("click", (e) => {
+            if (this.el.showPicker) {
+              try { this.el.showPicker() } catch(_) {}
+            }
+          })
+        }
+      }
+    </script>
     """
   end
 end

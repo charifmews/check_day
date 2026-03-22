@@ -87,6 +87,7 @@ defmodule CheckDayWeb.Router do
       post "/add_block", DigestBlockController, :add_block
       post "/remove_block", DigestBlockController, :remove_block
       post "/complete_onboarding", DigestBlockController, :complete_onboarding
+      post "/set_digest_time", DigestBlockController, :set_digest_time
     end
   end
 

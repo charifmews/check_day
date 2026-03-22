@@ -43,7 +43,7 @@ defmodule CheckDay.Accounts.User do
     defaults [:read]
 
     update :update_profile do
-      accept [:first_name, :onboarding_completed, :active_days, :skipped_dates]
+      accept [:first_name, :onboarding_completed, :active_days, :skipped_dates, :digest_times]
     end
 
     read :get_by_subject do
@@ -126,6 +126,20 @@ defmodule CheckDay.Accounts.User do
 
     attribute :skipped_dates, {:array, :date} do
       default []
+      public? true
+    end
+
+    attribute :digest_times, :map do
+      default %{
+        "1" => "07:00",
+        "2" => "07:00",
+        "3" => "07:00",
+        "4" => "07:00",
+        "5" => "07:00",
+        "6" => "07:00",
+        "7" => "07:00"
+      }
+
       public? true
     end
   end
