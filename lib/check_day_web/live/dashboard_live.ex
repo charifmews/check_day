@@ -31,7 +31,15 @@ defmodule CheckDayWeb.DashboardLive do
        |> assign(:user_active_days, user.active_days || [1, 2, 3, 4, 5, 6, 7])
        |> assign(:skipped_dates, user.skipped_dates || [])
        |> assign(:digest_times, user.digest_times || default_digest_times())
-       |> assign(:open_day_menu, nil)}
+       |> assign(:open_day_menu, nil)
+       |> assign(:show_add_form, false)
+       |> assign(:editing_block_id, nil)
+       |> assign(:add_type, "weather")
+       |> assign(:add_label, "")
+       |> assign(:add_config_rows, [])
+       |> assign(:edit_type, "weather")
+       |> assign(:edit_label, "")
+       |> assign(:edit_config_rows, [])}
     end
   end
 
@@ -161,6 +169,164 @@ defmodule CheckDayWeb.DashboardLive do
     end
   end
 
+  def handle_event("toggle_add_form", _params, socket) do
+    {:noreply, assign(socket, :show_add_form, !socket.assigns.show_add_form)}
+  end
+
+  def handle_event("update_add_type", %{"type" => type}, socket) do
+    {:noreply, assign(socket, :add_type, type)}
+  end
+
+  def handle_event("update_add_label", %{"value" => label}, socket) do
+    {:noreply, assign(socket, :add_label, label)}
+  end
+
+  def handle_event("add_config_row", _params, socket) do
+    rows = socket.assigns.add_config_rows ++ [%{key: "", value: ""}]
+    {:noreply, assign(socket, :add_config_rows, rows)}
+  end
+
+  def handle_event("remove_add_config_row", %{"index" => idx}, socket) do
+    index = String.to_integer(idx)
+    rows = List.delete_at(socket.assigns.add_config_rows, index)
+    {:noreply, assign(socket, :add_config_rows, rows)}
+  end
+
+  def handle_event("update_add_config_key", %{"index" => idx, "value" => val}, socket) do
+    index = String.to_integer(idx)
+    rows = List.update_at(socket.assigns.add_config_rows, index, &Map.put(&1, :key, val))
+    {:noreply, assign(socket, :add_config_rows, rows)}
+  end
+
+  def handle_event("update_add_config_value", %{"index" => idx, "value" => val}, socket) do
+    index = String.to_integer(idx)
+    rows = List.update_at(socket.assigns.add_config_rows, index, &Map.put(&1, :value, val))
+    {:noreply, assign(socket, :add_config_rows, rows)}
+  end
+
+  def handle_event("add_block", _params, socket) do
+    user = socket.assigns.current_user
+    type = String.to_existing_atom(socket.assigns.add_type)
+    label = socket.assigns.add_label
+    config = config_rows_to_map(socket.assigns.add_config_rows)
+
+    attrs = %{
+      type: type,
+      label: label,
+      config: config,
+      position: length(socket.assigns.blocks),
+      enabled: true,
+      user_id: user.id
+    }
+
+    case Ash.create(DigestBlock, attrs, authorize?: false) do
+      {:ok, _block} ->
+        blocks = load_user_blocks(user.id)
+
+        {:noreply,
+         socket
+         |> assign(:blocks, blocks)
+         |> assign(:show_add_form, false)
+         |> assign(:add_type, "weather")
+         |> assign(:add_label, "")
+         |> assign(:add_config_rows, [])}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Failed to add block")}
+    end
+  end
+
+  def handle_event("start_edit", %{"block-id" => block_id}, socket) do
+    block = Enum.find(socket.assigns.blocks, &(&1.id == block_id))
+
+    if block do
+      config_rows = map_to_config_rows(block.config)
+
+      {:noreply,
+       socket
+       |> assign(:editing_block_id, block_id)
+       |> assign(:edit_type, to_string(block.type))
+       |> assign(:edit_label, block.label)
+       |> assign(:edit_config_rows, config_rows)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("cancel_edit", _params, socket) do
+    {:noreply, assign(socket, :editing_block_id, nil)}
+  end
+
+  def handle_event("update_edit_type", %{"type" => type}, socket) do
+    {:noreply, assign(socket, :edit_type, type)}
+  end
+
+  def handle_event("update_edit_label", %{"value" => label}, socket) do
+    {:noreply, assign(socket, :edit_label, label)}
+  end
+
+  def handle_event("add_edit_config_row", _params, socket) do
+    rows = socket.assigns.edit_config_rows ++ [%{key: "", value: ""}]
+    {:noreply, assign(socket, :edit_config_rows, rows)}
+  end
+
+  def handle_event("remove_edit_config_row", %{"index" => idx}, socket) do
+    index = String.to_integer(idx)
+    rows = List.delete_at(socket.assigns.edit_config_rows, index)
+    {:noreply, assign(socket, :edit_config_rows, rows)}
+  end
+
+  def handle_event("update_edit_config_key", %{"index" => idx, "value" => val}, socket) do
+    index = String.to_integer(idx)
+    rows = List.update_at(socket.assigns.edit_config_rows, index, &Map.put(&1, :key, val))
+    {:noreply, assign(socket, :edit_config_rows, rows)}
+  end
+
+  def handle_event("update_edit_config_value", %{"index" => idx, "value" => val}, socket) do
+    index = String.to_integer(idx)
+    rows = List.update_at(socket.assigns.edit_config_rows, index, &Map.put(&1, :value, val))
+    {:noreply, assign(socket, :edit_config_rows, rows)}
+  end
+
+  def handle_event("save_edit", _params, socket) do
+    block = Enum.find(socket.assigns.blocks, &(&1.id == socket.assigns.editing_block_id))
+
+    if block do
+      config = config_rows_to_map(socket.assigns.edit_config_rows)
+
+      case Ash.update(block, %{type: String.to_existing_atom(socket.assigns.edit_type), label: socket.assigns.edit_label, config: config},
+             action: :update,
+             authorize?: false
+           ) do
+        {:ok, _} ->
+          blocks = load_user_blocks(socket.assigns.current_user.id)
+          {:noreply, socket |> assign(:blocks, blocks) |> assign(:editing_block_id, nil)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to update block")}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("delete_block", %{"block-id" => block_id}, socket) do
+    block = Enum.find(socket.assigns.blocks, &(&1.id == block_id))
+
+    if block do
+      case Ash.destroy(block, authorize?: false) do
+        :ok ->
+          blocks = load_user_blocks(socket.assigns.current_user.id)
+          {:noreply, assign(socket, :blocks, blocks)}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, "Failed to delete block")}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
   # PubSub handlers
   @impl true
   def handle_info({:digest_update, {:block_added, _block}}, socket) do
@@ -178,6 +344,19 @@ defmodule CheckDayWeb.DashboardLive do
   end
 
   def handle_info({:digest_update, _}, socket), do: {:noreply, socket}
+
+  defp config_rows_to_map(rows) do
+    rows
+    |> Enum.reject(fn %{key: k} -> k == "" end)
+    |> Map.new(fn %{key: k, value: v} -> {k, v} end)
+  end
+
+  defp map_to_config_rows(nil), do: []
+  defp map_to_config_rows(config) when config == %{}, do: []
+
+  defp map_to_config_rows(config) when is_map(config) do
+    Enum.map(config, fn {k, v} -> %{key: to_string(k), value: to_string(v)} end)
+  end
 
   defp load_user_blocks(user_id) do
     DigestBlock
@@ -352,21 +531,7 @@ defmodule CheckDayWeb.DashboardLive do
               <.icon name="hero-chevron-right" class="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
 
-            <div class="w-px h-8 bg-gray-200 dark:bg-gray-700 mx-2" />
-
-            <.link
-              navigate={~p"/onboarding"}
-              class={[
-                "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium",
-                "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
-                "hover:bg-indigo-100 hover:border-indigo-300 dark:hover:bg-indigo-900/50 dark:hover:border-indigo-700",
-                "transition-all duration-200"
-              ]}
-              id="rerun-onboarding-btn"
-            >
-              <.icon name="hero-microphone" class="w-4 h-4" /> Voice Setup
-            </.link>
-          </div>
+            </div>
         </div>
 
         <%!-- 7-Day Grid --%>
@@ -613,29 +778,189 @@ defmodule CheckDayWeb.DashboardLive do
           <% end %>
         </div>
 
-        <%!-- Empty State --%>
-        <%= if @blocks == [] do %>
-          <div
-            class="mt-8 text-center py-12 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700"
-            id="empty-state"
-          >
-            <.icon name="hero-inbox" class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <h3 class="text-lg font-semibold text-gray-600 dark:text-gray-300 mb-2">No digest blocks yet</h3>
-            <p class="text-gray-400 dark:text-gray-500 mb-4">Set up your daily digest with a voice conversation</p>
-            <.link
-              navigate={~p"/onboarding"}
+        <%!-- Block Management --%>
+        <div class="mt-8" id="block-management">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Digest Blocks</h2>
+            <button
+              phx-click="toggle_add_form"
               class={[
-                "inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium",
-                "bg-gradient-to-r from-indigo-500 to-purple-600 text-white",
-                "hover:from-indigo-600 hover:to-purple-700",
-                "shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 transition-all duration-200"
+                "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium",
+                "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
+                "hover:bg-indigo-100 hover:border-indigo-300 dark:hover:bg-indigo-900/50 dark:hover:border-indigo-700",
+                "transition-all duration-200"
               ]}
-              id="start-onboarding-btn"
+              id="toggle-add-form-btn"
             >
-              <.icon name="hero-microphone" class="w-5 h-5" /> Start Voice Setup
-            </.link>
+              <.icon name={if(@show_add_form, do: "hero-x-mark", else: "hero-plus")} class="w-4 h-4" />
+              {if @show_add_form, do: "Cancel", else: "Add Block"}
+            </button>
           </div>
-        <% end %>
+
+          <%= if @show_add_form do %>
+            <div class="mb-6 p-5 rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20" id="add-block-form">
+              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">New Block</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Type</label>
+                  <select
+                    phx-change="update_add_type"
+                    name="type"
+                    id="add-block-type"
+                    class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
+                  >
+                    <option value="weather" selected={@add_type == "weather"}>☀️ Weather</option>
+                    <option value="news" selected={@add_type == "news"}>📰 News</option>
+                    <option value="interest" selected={@add_type == "interest"}>✨ Interest</option>
+                    <option value="competitor" selected={@add_type == "competitor"}>🏢 Competitor</option>
+                    <option value="stock" selected={@add_type == "stock"}>📈 Stock</option>
+                    <option value="agenda" selected={@add_type == "agenda"}>📅 Agenda</option>
+                    <option value="habit" selected={@add_type == "habit"}>✅ Habit</option>
+                    <option value="custom" selected={@add_type == "custom"}>🧩 Custom</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Label</label>
+                  <input
+                    type="text"
+                    value={@add_label}
+                    phx-keyup="update_add_label"
+                    phx-key=""
+                    name="label"
+                    id="add-block-label"
+                    placeholder="e.g. Amsterdam Weather"
+                    class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
+                  />
+                </div>
+              </div>
+              <%!-- Config Key/Value Rows --%>
+              <div class="mt-4">
+                <div class="flex items-center justify-between mb-2">
+                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">Config <span class="text-gray-400 dark:text-gray-500">(optional)</span></label>
+                  <button phx-click="add_config_row" type="button" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400 dark:hover:text-indigo-300" id="add-config-row-btn">
+                    + Add field
+                  </button>
+                </div>
+                <%= for {row, idx} <- Enum.with_index(@add_config_rows) do %>
+                  <div class="flex items-center gap-2 mb-2" id={"add-config-row-#{idx}"}>
+                    <input type="text" value={row.key} phx-keyup="update_add_config_key" phx-value-index={idx} phx-key="" placeholder="key" id={"add-config-key-#{idx}"} class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500" />
+                    <input type="text" value={row.value} phx-keyup="update_add_config_value" phx-value-index={idx} phx-key="" placeholder="value" id={"add-config-val-#{idx}"} class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500" />
+                    <button phx-click="remove_add_config_row" phx-value-index={idx} type="button" class="p-1 text-gray-400 hover:text-red-500 transition-colors" id={"remove-add-config-#{idx}"}>
+                      <.icon name="hero-x-mark" class="w-4 h-4" />
+                    </button>
+                  </div>
+                <% end %>
+              </div>
+              <div class="mt-4 flex justify-end">
+                <button
+                  phx-click="add_block"
+                  disabled={@add_label == ""}
+                  class={[
+                    "inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                    if(@add_label == "",
+                      do: "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500",
+                      else: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                    )
+                  ]}
+                  id="submit-add-block-btn"
+                >
+                  <.icon name="hero-plus" class="w-4 h-4" /> Add
+                </button>
+              </div>
+            </div>
+          <% end %>
+
+          <%= if @blocks == [] do %>
+            <div class="text-center py-12 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700" id="empty-state">
+              <.icon name="hero-inbox" class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <h3 class="text-lg font-semibold text-gray-600 dark:text-gray-300 mb-2">No digest blocks yet</h3>
+              <p class="text-gray-400 dark:text-gray-500">Click "Add Block" above to build your daily digest</p>
+            </div>
+          <% else %>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" id="block-list">
+              <%= for block <- @blocks do %>
+                <%= if @editing_block_id == block.id do %>
+                  <div class="rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20 p-5 col-span-full" id={"manage-block-#{block.id}"}>
+                    <div class="space-y-3">
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Type</label>
+                          <select
+                            phx-change="update_edit_type"
+                            name="type"
+                            id={"edit-type-#{block.id}"}
+                            class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
+                          >
+                            <option value="weather" selected={@edit_type == "weather"}>☀️ Weather</option>
+                            <option value="news" selected={@edit_type == "news"}>📰 News</option>
+                            <option value="interest" selected={@edit_type == "interest"}>✨ Interest</option>
+                            <option value="competitor" selected={@edit_type == "competitor"}>🏢 Competitor</option>
+                            <option value="stock" selected={@edit_type == "stock"}>📈 Stock</option>
+                            <option value="agenda" selected={@edit_type == "agenda"}>📅 Agenda</option>
+                            <option value="habit" selected={@edit_type == "habit"}>✅ Habit</option>
+                            <option value="custom" selected={@edit_type == "custom"}>🧩 Custom</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Label</label>
+                          <input type="text" value={@edit_label} phx-keyup="update_edit_label" phx-key="" name="label" id={"edit-label-#{block.id}"} class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700" />
+                        </div>
+                      </div>
+                      <div>
+                        <div class="flex items-center justify-between mb-1">
+                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">Config</label>
+                          <button phx-click="add_edit_config_row" type="button" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400" id={"add-edit-config-row-#{block.id}"}>+ Add field</button>
+                        </div>
+                        <%= for {row, idx} <- Enum.with_index(@edit_config_rows) do %>
+                          <div class="flex items-center gap-2 mb-2" id={"edit-config-row-#{block.id}-#{idx}"}>
+                            <input type="text" value={row.key} phx-keyup="update_edit_config_key" phx-value-index={idx} phx-key="" placeholder="key" id={"edit-config-key-#{block.id}-#{idx}"} class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500" />
+                            <input type="text" value={row.value} phx-keyup="update_edit_config_value" phx-value-index={idx} phx-key="" placeholder="value" id={"edit-config-val-#{block.id}-#{idx}"} class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500" />
+                            <button phx-click="remove_edit_config_row" phx-value-index={idx} type="button" class="p-1 text-gray-400 hover:text-red-500 transition-colors" id={"remove-edit-config-#{block.id}-#{idx}"}>
+                              <.icon name="hero-x-mark" class="w-4 h-4" />
+                            </button>
+                          </div>
+                        <% end %>
+                      </div>
+                      <div class="flex gap-2 justify-end">
+                        <button phx-click="cancel_edit" class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600" id={"cancel-edit-#{block.id}"}>Cancel</button>
+                        <button phx-click="save_edit" class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all dark:bg-indigo-500 dark:hover:bg-indigo-600" id={"save-edit-#{block.id}"}>Save</button>
+                      </div>
+                    </div>
+                  </div>
+                <% else %>
+                  <div class={["rounded-xl border p-4 transition-all duration-200", type_bg(block.type)]} id={"manage-block-#{block.id}"}>
+                    <div class="flex items-start gap-3">
+                      <div class={["shrink-0 mt-0.5", type_icon_color(block.type)]}>
+                        <.icon name={type_icon(block.type)} class="w-5 h-5" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class={["font-medium text-sm truncate", type_label_color(block.type)]}>{block.label}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">{block.type}</p>
+                        <%= if block.config && block.config != %{} do %>
+                          <div class="mt-1.5 flex flex-wrap gap-1">
+                            <%= for {k, v} <- block.config do %>
+                              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                                {k}: {v}
+                              </span>
+                            <% end %>
+                          </div>
+                        <% end %>
+                      </div>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <button phx-click="start_edit" phx-value-block-id={block.id} class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all dark:hover:text-indigo-400 dark:hover:bg-indigo-950/40" id={"edit-btn-#{block.id}"}>
+                          <.icon name="hero-pencil-square" class="w-4 h-4" />
+                        </button>
+                        <button phx-click="delete_block" phx-value-block-id={block.id} data-confirm="Remove this block from your digest?" class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all dark:hover:text-red-400 dark:hover:bg-red-950/40" id={"delete-btn-#{block.id}"}>
+                          <.icon name="hero-trash" class="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
       </div>
     </Layouts.app>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".TimePicker">

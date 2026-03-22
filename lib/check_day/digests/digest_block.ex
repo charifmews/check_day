@@ -18,7 +18,7 @@ defmodule CheckDay.Digests.DigestBlock do
     end
 
     update :update do
-      accept [:label, :config, :position, :enabled, :active_days]
+      accept [:type, :label, :config, :position, :enabled, :active_days]
     end
 
     update :update_days do
