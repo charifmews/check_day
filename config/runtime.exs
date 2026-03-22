@@ -23,6 +23,16 @@ end
 config :check_day, CheckDayWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# ElevenLabs configuration from environment variables
+# In dev, these can be set in config/dev.secret.exs instead
+if webhook_secret = System.get_env("ELEVENLABS_WEBHOOK_SECRET") do
+  config :check_day, eleven_labs_webhook_secret: webhook_secret
+end
+
+if agent_id = System.get_env("ELEVENLABS_AGENT_ID") do
+  config :check_day, eleven_labs_agent_id: agent_id
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
