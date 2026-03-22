@@ -11,24 +11,19 @@ defmodule CheckDayWeb.OnboardingLive do
   def mount(_params, _session, socket) do
     user = socket.assigns.current_user
 
-    # Redirect if onboarding already completed
-    if user.onboarding_completed do
-      {:ok, push_navigate(socket, to: ~p"/dashboard")}
-    else
-      if connected?(socket) do
-        Phoenix.PubSub.subscribe(CheckDay.PubSub, "user:#{user.id}")
-      end
-
-      blocks = load_user_blocks(user.id)
-
-      {:ok,
-       socket
-       |> assign(:conversation_status, :idle)
-       |> assign(:first_name, user.first_name || "")
-       |> assign(:transcript, [])
-       |> stream(:digest_blocks, blocks)
-       |> assign(:blocks_empty?, blocks == [])}
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(CheckDay.PubSub, "user:#{user.id}")
     end
+
+    blocks = load_user_blocks(user.id)
+
+    {:ok,
+     socket
+     |> assign(:conversation_status, :idle)
+     |> assign(:first_name, user.first_name || "")
+     |> assign(:transcript, [])
+     |> stream(:digest_blocks, blocks)
+     |> assign(:blocks_empty?, blocks == [])}
   end
 
   @impl true

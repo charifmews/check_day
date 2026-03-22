@@ -27,8 +27,7 @@ defmodule CheckDayWeb.DashboardLive do
        socket
        |> assign(:week_start, week_start)
        |> assign(:today, today)
-       |> stream(:digest_blocks, blocks)
-       |> assign(:blocks_empty?, blocks == [])}
+       |> assign(:blocks, blocks)}
     end
   end
 
@@ -50,20 +49,14 @@ defmodule CheckDayWeb.DashboardLive do
 
   # PubSub handlers
   @impl true
-  def handle_info({:digest_update, {:block_added, block}}, socket) do
-    {:noreply,
-     socket
-     |> stream_insert(:digest_blocks, block)
-     |> assign(:blocks_empty?, false)}
+  def handle_info({:digest_update, {:block_added, _block}}, socket) do
+    blocks = load_user_blocks(socket.assigns.current_user.id)
+    {:noreply, assign(socket, :blocks, blocks)}
   end
 
-  def handle_info({:digest_update, {:block_removed, block}}, socket) do
+  def handle_info({:digest_update, {:block_removed, _block}}, socket) do
     blocks = load_user_blocks(socket.assigns.current_user.id)
-
-    {:noreply,
-     socket
-     |> stream_delete(:digest_blocks, block)
-     |> assign(:blocks_empty?, blocks == [])}
+    {:noreply, assign(socket, :blocks, blocks)}
   end
 
   def handle_info({:digest_update, _}, socket), do: {:noreply, socket}
@@ -72,7 +65,7 @@ defmodule CheckDayWeb.DashboardLive do
     DigestBlock
     |> Ash.Query.filter(user_id == ^user_id)
     |> Ash.Query.sort(position: :asc)
-    |> Ash.read!()
+    |> Ash.read!(authorize?: false)
   end
 
   defp week_days(week_start) do
@@ -111,17 +104,45 @@ defmodule CheckDayWeb.DashboardLive do
     end
   end
 
-  defp type_color(type) do
+  defp type_bg(type) do
     case type do
-      :weather -> "bg-sky-100 text-sky-700 border-sky-200"
-      :news -> "bg-purple-100 text-purple-700 border-purple-200"
-      :interest -> "bg-amber-100 text-amber-700 border-amber-200"
-      :competitor -> "bg-red-100 text-red-700 border-red-200"
-      :stock -> "bg-emerald-100 text-emerald-700 border-emerald-200"
-      :agenda -> "bg-blue-100 text-blue-700 border-blue-200"
-      :habit -> "bg-green-100 text-green-700 border-green-200"
-      :custom -> "bg-gray-100 text-gray-700 border-gray-200"
-      _ -> "bg-gray-100 text-gray-700 border-gray-200"
+      :weather -> "bg-sky-50 border-sky-200"
+      :news -> "bg-purple-50 border-purple-200"
+      :interest -> "bg-amber-50 border-amber-200"
+      :competitor -> "bg-red-50 border-red-200"
+      :stock -> "bg-emerald-50 border-emerald-200"
+      :agenda -> "bg-blue-50 border-blue-200"
+      :habit -> "bg-green-50 border-green-200"
+      :custom -> "bg-gray-50 border-gray-200"
+      _ -> "bg-gray-50 border-gray-200"
+    end
+  end
+
+  defp type_icon_color(type) do
+    case type do
+      :weather -> "text-sky-600"
+      :news -> "text-purple-600"
+      :interest -> "text-amber-600"
+      :competitor -> "text-red-600"
+      :stock -> "text-emerald-600"
+      :agenda -> "text-blue-600"
+      :habit -> "text-green-600"
+      :custom -> "text-gray-600"
+      _ -> "text-gray-600"
+    end
+  end
+
+  defp type_label_color(type) do
+    case type do
+      :weather -> "text-sky-800"
+      :news -> "text-purple-800"
+      :interest -> "text-amber-800"
+      :competitor -> "text-red-800"
+      :stock -> "text-emerald-800"
+      :agenda -> "text-blue-800"
+      :habit -> "text-green-800"
+      :custom -> "text-gray-800"
+      _ -> "text-gray-800"
     end
   end
 
@@ -131,7 +152,7 @@ defmodule CheckDayWeb.DashboardLive do
 
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user}>
-      <div class="max-w-7xl mx-auto px-4 py-8">
+      <div class="w-full max-w-[1600px] mx-auto px-6 lg:px-10 py-8">
         <%!-- Header --%>
         <div class="flex items-center justify-between mb-8">
           <div>
@@ -197,98 +218,74 @@ defmodule CheckDayWeb.DashboardLive do
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <%!-- Left: Week Calendar (3 cols) --%>
-          <div class="lg:col-span-3">
-            <div class="grid grid-cols-7 gap-2" id="week-grid">
-              <%= for day <- @days do %>
-                <div
-                  class={[
-                    "rounded-xl border min-h-[180px] transition-all duration-200",
-                    if(day == @today,
-                      do: "border-indigo-300 bg-indigo-50/30 shadow-sm",
-                      else: "border-gray-200 bg-white hover:border-gray-300"
-                    )
-                  ]}
-                  id={"day-#{day}"}
-                >
-                  <%!-- Day Header --%>
-                  <div class={[
-                    "px-3 py-2 border-b text-center",
-                    if(day == @today,
-                      do: "border-indigo-100",
-                      else: "border-gray-100"
-                    )
-                  ]}>
-                    <p class={[
-                      "text-xs font-medium uppercase tracking-wide",
-                      if(day == @today, do: "text-indigo-600", else: "text-gray-400")
-                    ]}>
-                      {day_name(day)}
-                    </p>
-                    <p class={[
-                      "text-lg font-bold",
-                      if(day == @today, do: "text-indigo-700", else: "text-gray-800")
-                    ]}>
-                      {day_number(day)}
-                    </p>
-                  </div>
-
-                  <%!-- Placeholder for day content (future: day-specific events) --%>
-                  <div class="p-2">
-                    <p class="text-xs text-gray-300 text-center mt-4">
-                      {if day == @today, do: "Today", else: ""}
-                    </p>
-                  </div>
-                </div>
-              <% end %>
-            </div>
-          </div>
-
-          <%!-- Right: Digest Blocks Sidebar (1 col) --%>
-          <div class="lg:col-span-1">
+        <%!-- 7-Day Grid with Digest Blocks --%>
+        <div class="grid grid-cols-7 gap-3" id="week-grid">
+          <%= for day <- @days do %>
             <div
-              class="rounded-2xl border border-gray-200 bg-white p-4 sticky top-4"
-              id="digest-sidebar"
+              class={[
+                "rounded-xl border flex flex-col min-h-[420px] transition-all duration-200",
+                if(day == @today,
+                  do: "border-indigo-300 bg-indigo-50/20 shadow-md ring-1 ring-indigo-200/50",
+                  else: "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                )
+              ]}
+              id={"day-#{day}"}
             >
-              <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
-                Daily Digest
-              </h3>
+              <%!-- Day Header --%>
+              <div class={[
+                "px-3 py-3 border-b text-center shrink-0",
+                if(day == @today,
+                  do: "border-indigo-200/60 bg-indigo-50/50",
+                  else: "border-gray-100"
+                )
+              ]}>
+                <p class={[
+                  "text-xs font-semibold uppercase tracking-wider",
+                  if(day == @today, do: "text-indigo-600", else: "text-gray-400")
+                ]}>
+                  {day_name(day)}
+                </p>
+                <p class={[
+                  "text-xl font-bold mt-0.5",
+                  if(day == @today, do: "text-indigo-700", else: "text-gray-800")
+                ]}>
+                  {day_number(day)}
+                </p>
+              </div>
 
-              <div id="digest-blocks" phx-update="stream">
-                <div
-                  id="empty-blocks"
-                  class="hidden only:flex flex-col items-center justify-center py-8 text-gray-400"
-                >
-                  <.icon name="hero-inbox" class="w-10 h-10 mb-2 opacity-50" />
-                  <p class="text-xs text-center">No blocks yet</p>
-                </div>
-
-                <div
-                  :for={{id, block} <- @streams.digest_blocks}
-                  id={id}
-                  class={[
-                    "flex items-center gap-2.5 p-3 rounded-xl border mb-2",
-                    "hover:shadow-sm transition-all duration-200",
-                    "animate-[slideIn_0.3s_ease-out]",
-                    type_color(block.type)
-                  ]}
-                >
-                  <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white/60">
-                    <.icon name={type_icon(block.type)} class="w-4 h-4" />
+              <%!-- Digest Blocks for this day --%>
+              <div class="p-2 flex-1 space-y-1.5 overflow-y-auto" id={"day-blocks-#{day}"}>
+                <%= if @blocks == [] do %>
+                  <div class="flex flex-col items-center justify-center h-full text-gray-300">
+                    <.icon name="hero-inbox" class="w-6 h-6 mb-1 opacity-40" />
+                    <p class="text-[10px]">No blocks</p>
                   </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="font-medium text-sm truncate">{block.label}</p>
-                    <p class="text-[10px] uppercase tracking-wide opacity-70">{block.type}</p>
-                  </div>
-                </div>
+                <% else %>
+                  <%= for block <- @blocks do %>
+                    <div
+                      class={[
+                        "flex items-center gap-2 p-2 rounded-lg border",
+                        "transition-all duration-200 hover:shadow-sm",
+                        type_bg(block.type)
+                      ]}
+                      id={"block-#{block.id}-#{day}"}
+                    >
+                      <div class={["shrink-0", type_icon_color(block.type)]}>
+                        <.icon name={type_icon(block.type)} class="w-4 h-4" />
+                      </div>
+                      <span class={["text-xs font-medium truncate", type_label_color(block.type)]}>
+                        {block.label}
+                      </span>
+                    </div>
+                  <% end %>
+                <% end %>
               </div>
             </div>
-          </div>
+          <% end %>
         </div>
 
         <%!-- Empty State --%>
-        <%= if @blocks_empty? do %>
+        <%= if @blocks == [] do %>
           <div
             class="mt-8 text-center py-12 rounded-2xl border-2 border-dashed border-gray-200"
             id="empty-state"
