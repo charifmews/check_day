@@ -43,7 +43,7 @@ defmodule CheckDay.Accounts.User do
     defaults [:read]
 
     update :update_profile do
-      accept [:first_name, :onboarding_completed]
+      accept [:first_name, :onboarding_completed, :active_days, :skipped_dates]
     end
 
     read :get_by_subject do
@@ -116,6 +116,16 @@ defmodule CheckDay.Accounts.User do
 
     attribute :onboarding_completed, :boolean do
       default false
+      public? true
+    end
+
+    attribute :active_days, {:array, :integer} do
+      default [1, 2, 3, 4, 5, 6, 7]
+      public? true
+    end
+
+    attribute :skipped_dates, {:array, :date} do
+      default []
       public? true
     end
   end

@@ -329,7 +329,6 @@ defmodule CheckDayWeb.OnboardingLive do
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>

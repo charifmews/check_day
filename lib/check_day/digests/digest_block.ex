@@ -14,11 +14,15 @@ defmodule CheckDay.Digests.DigestBlock do
 
     create :create do
       primary? true
-      accept [:type, :label, :config, :position, :enabled, :user_id]
+      accept [:type, :label, :config, :position, :enabled, :active_days, :user_id]
     end
 
     update :update do
-      accept [:label, :config, :position, :enabled]
+      accept [:label, :config, :position, :enabled, :active_days]
+    end
+
+    update :update_days do
+      accept [:active_days]
     end
 
     update :reorder do
@@ -62,6 +66,11 @@ defmodule CheckDay.Digests.DigestBlock do
 
     attribute :enabled, :boolean do
       default true
+      public? true
+    end
+
+    attribute :active_days, {:array, :integer} do
+      default [1, 2, 3, 4, 5, 6, 7]
       public? true
     end
 
