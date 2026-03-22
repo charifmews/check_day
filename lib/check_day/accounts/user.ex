@@ -43,7 +43,14 @@ defmodule CheckDay.Accounts.User do
     defaults [:read]
 
     update :update_profile do
-      accept [:first_name, :onboarding_completed, :active_days, :skipped_dates, :digest_times]
+      accept [
+        :first_name,
+        :onboarding_completed,
+        :active_days,
+        :skipped_dates,
+        :digest_times,
+        :timezone
+      ]
     end
 
     read :get_by_subject do
@@ -73,7 +80,7 @@ defmodule CheckDay.Accounts.User do
 
       upsert? true
       upsert_identity :unique_email
-      upsert_fields [:email]
+      upsert_fields [:email, :timezone]
 
       # Uses the information from the token to create or sign in the user
       change AshAuthentication.Strategy.MagicLink.SignInChange
@@ -140,6 +147,11 @@ defmodule CheckDay.Accounts.User do
         "7" => "07:00"
       }
 
+      public? true
+    end
+
+    attribute :timezone, :string do
+      default "Etc/UTC"
       public? true
     end
   end

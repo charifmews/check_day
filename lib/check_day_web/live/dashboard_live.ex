@@ -15,9 +15,13 @@ defmodule CheckDayWeb.DashboardLive do
     if not user.onboarding_completed do
       {:ok, push_navigate(socket, to: ~p"/onboarding")}
     else
-      if connected?(socket) do
-        Phoenix.PubSub.subscribe(CheckDay.PubSub, "user:#{user.id}")
-      end
+      socket =
+        if connected?(socket) do
+          Phoenix.PubSub.subscribe(CheckDay.PubSub, "user:#{user.id}")
+          maybe_save_timezone(socket, user)
+        else
+          socket
+        end
 
       blocks = load_user_blocks(user.id)
       today = Date.utc_today()
@@ -297,7 +301,13 @@ defmodule CheckDayWeb.DashboardLive do
     if block do
       config = config_rows_to_map(socket.assigns.edit_config_rows)
 
-      case Ash.update(block, %{type: String.to_existing_atom(socket.assigns.edit_type), label: socket.assigns.edit_label, config: config},
+      case Ash.update(
+             block,
+             %{
+               type: String.to_existing_atom(socket.assigns.edit_type),
+               label: socket.assigns.edit_label,
+               config: config
+             },
              action: :update,
              authorize?: false
            ) do
@@ -420,6 +430,19 @@ defmodule CheckDayWeb.DashboardLive do
     Enum.map(config, fn {k, v} -> %{key: to_string(k), value: to_string(v)} end)
   end
 
+  defp maybe_save_timezone(socket, user) do
+    timezone = get_connect_params(socket)["timezone"]
+
+    if timezone && timezone != "" && user.timezone in [nil, "Etc/UTC"] do
+      case Ash.update(user, %{timezone: timezone}, action: :update_profile, authorize?: false) do
+        {:ok, _} -> socket
+        {:error, _} -> socket
+      end
+    else
+      socket
+    end
+  end
+
   defp load_user_blocks(user_id) do
     DigestBlock
     |> Ash.Query.filter(user_id == ^user_id)
@@ -484,7 +507,9 @@ defmodule CheckDayWeb.DashboardLive do
 
   defp format_blocks_for_agent(blocks) do
     blocks
-    |> Enum.map(fn block -> "block_id: #{block.id}, type: #{block.type}, label: #{block.label}" end)
+    |> Enum.map(fn block ->
+      "block_id: #{block.id}, type: #{block.type}, label: #{block.label}"
+    end)
     |> Enum.join(", ")
   end
 
@@ -628,8 +653,7 @@ defmodule CheckDayWeb.DashboardLive do
             >
               <.icon name="hero-chevron-right" class="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
-
-            </div>
+          </div>
         </div>
 
         <%!-- 7-Day Grid --%>
@@ -714,7 +738,11 @@ defmodule CheckDayWeb.DashboardLive do
                       id={"time-form-#{day}"}
                       class="flex items-center justify-center mt-1.5"
                     >
-                      <input type="hidden" name="day" value={Integer.to_string(Date.day_of_week(day))} />
+                      <input
+                        type="hidden"
+                        name="day"
+                        value={Integer.to_string(Date.day_of_week(day))}
+                      />
                       <input
                         type="time"
                         value={get_day_time(@digest_times, day)}
@@ -765,8 +793,10 @@ defmodule CheckDayWeb.DashboardLive do
                       "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-sm cursor-pointer",
                       "transition-all duration-150",
                       if(is_date_skipped,
-                        do: "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/40",
-                        else: "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                        do:
+                          "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/40",
+                        else:
+                          "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
                       )
                     ]}
                     id={"skip-date-#{day}"}
@@ -795,8 +825,10 @@ defmodule CheckDayWeb.DashboardLive do
                       "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-sm cursor-pointer",
                       "transition-all duration-150",
                       if(is_weekly_off,
-                        do: "bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-400 dark:hover:bg-orange-900/40",
-                        else: "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                        do:
+                          "bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-400 dark:hover:bg-orange-900/40",
+                        else:
+                          "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
                       )
                     ]}
                     id={"toggle-weekly-#{day}"}
@@ -844,7 +876,8 @@ defmodule CheckDayWeb.DashboardLive do
                           "transition-all duration-200 group/block cursor-pointer",
                           if(is_block_active,
                             do: ["hover:shadow-sm", type_bg(block.type)],
-                            else: "bg-gray-50 border-gray-200 opacity-40 hover:opacity-60 dark:bg-gray-800 dark:border-gray-700"
+                            else:
+                              "bg-gray-50 border-gray-200 opacity-40 hover:opacity-60 dark:bg-gray-800 dark:border-gray-700"
                           )
                         ]}
                         id={"block-#{block.id}-#{day}"}
@@ -896,11 +929,16 @@ defmodule CheckDayWeb.DashboardLive do
           </div>
 
           <%= if @show_add_form do %>
-            <div class="mb-6 p-5 rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20" id="add-block-form">
+            <div
+              class="mb-6 p-5 rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20"
+              id="add-block-form"
+            >
               <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">New Block</h3>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Type</label>
+                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Type
+                  </label>
                   <select
                     phx-change="update_add_type"
                     name="type"
@@ -910,7 +948,9 @@ defmodule CheckDayWeb.DashboardLive do
                     <option value="weather" selected={@add_type == "weather"}>☀️ Weather</option>
                     <option value="news" selected={@add_type == "news"}>📰 News</option>
                     <option value="interest" selected={@add_type == "interest"}>✨ Interest</option>
-                    <option value="competitor" selected={@add_type == "competitor"}>🏢 Competitor</option>
+                    <option value="competitor" selected={@add_type == "competitor"}>
+                      🏢 Competitor
+                    </option>
                     <option value="stock" selected={@add_type == "stock"}>📈 Stock</option>
                     <option value="agenda" selected={@add_type == "agenda"}>📅 Agenda</option>
                     <option value="habit" selected={@add_type == "habit"}>✅ Habit</option>
@@ -918,7 +958,9 @@ defmodule CheckDayWeb.DashboardLive do
                   </select>
                 </div>
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Label</label>
+                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    Label
+                  </label>
                   <input
                     type="text"
                     value={@add_label}
@@ -934,16 +976,47 @@ defmodule CheckDayWeb.DashboardLive do
               <%!-- Config Key/Value Rows --%>
               <div class="mt-4">
                 <div class="flex items-center justify-between mb-2">
-                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">Config <span class="text-gray-400 dark:text-gray-500">(optional)</span></label>
-                  <button phx-click="add_config_row" type="button" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400 dark:hover:text-indigo-300" id="add-config-row-btn">
+                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                    Config <span class="text-gray-400 dark:text-gray-500">(optional)</span>
+                  </label>
+                  <button
+                    phx-click="add_config_row"
+                    type="button"
+                    class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400 dark:hover:text-indigo-300"
+                    id="add-config-row-btn"
+                  >
                     + Add field
                   </button>
                 </div>
                 <%= for {row, idx} <- Enum.with_index(@add_config_rows) do %>
                   <div class="flex items-center gap-2 mb-2" id={"add-config-row-#{idx}"}>
-                    <input type="text" value={row.key} phx-keyup="update_add_config_key" phx-value-index={idx} phx-key="" placeholder="key" id={"add-config-key-#{idx}"} class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500" />
-                    <input type="text" value={row.value} phx-keyup="update_add_config_value" phx-value-index={idx} phx-key="" placeholder="value" id={"add-config-val-#{idx}"} class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500" />
-                    <button phx-click="remove_add_config_row" phx-value-index={idx} type="button" class="p-1 text-gray-400 hover:text-red-500 transition-colors" id={"remove-add-config-#{idx}"}>
+                    <input
+                      type="text"
+                      value={row.key}
+                      phx-keyup="update_add_config_key"
+                      phx-value-index={idx}
+                      phx-key=""
+                      placeholder="key"
+                      id={"add-config-key-#{idx}"}
+                      class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
+                    />
+                    <input
+                      type="text"
+                      value={row.value}
+                      phx-keyup="update_add_config_value"
+                      phx-value-index={idx}
+                      phx-key=""
+                      placeholder="value"
+                      id={"add-config-val-#{idx}"}
+                      class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
+                    />
+                    <button
+                      phx-click="remove_add_config_row"
+                      phx-value-index={idx}
+                      type="button"
+                      class="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      id={"remove-add-config-#{idx}"}
+                    >
                       <.icon name="hero-x-mark" class="w-4 h-4" />
                     </button>
                   </div>
@@ -956,8 +1029,10 @@ defmodule CheckDayWeb.DashboardLive do
                   class={[
                     "inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                     if(@add_label == "",
-                      do: "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500",
-                      else: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                      do:
+                        "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500",
+                      else:
+                        "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm dark:bg-indigo-500 dark:hover:bg-indigo-600"
                     )
                   ]}
                   id="submit-add-block-btn"
@@ -969,30 +1044,54 @@ defmodule CheckDayWeb.DashboardLive do
           <% end %>
 
           <%= if @blocks == [] do %>
-            <div class="text-center py-12 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700" id="empty-state">
-              <.icon name="hero-inbox" class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-              <h3 class="text-lg font-semibold text-gray-600 dark:text-gray-300 mb-2">No digest blocks yet</h3>
-              <p class="text-gray-400 dark:text-gray-500">Click "Add Block" above to build your daily digest</p>
+            <div
+              class="text-center py-12 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700"
+              id="empty-state"
+            >
+              <.icon
+                name="hero-inbox"
+                class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4"
+              />
+              <h3 class="text-lg font-semibold text-gray-600 dark:text-gray-300 mb-2">
+                No digest blocks yet
+              </h3>
+              <p class="text-gray-400 dark:text-gray-500">
+                Click "Add Block" above to build your daily digest
+              </p>
             </div>
           <% else %>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3" id="block-list">
+            <div
+              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
+              id="block-list"
+            >
               <%= for block <- @blocks do %>
                 <%= if @editing_block_id == block.id do %>
-                  <div class="rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20 p-5 col-span-full" id={"manage-block-#{block.id}"}>
+                  <div
+                    class="rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20 p-5 col-span-full"
+                    id={"manage-block-#{block.id}"}
+                  >
                     <div class="space-y-3">
                       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Type</label>
+                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                            Type
+                          </label>
                           <select
                             phx-change="update_edit_type"
                             name="type"
                             id={"edit-type-#{block.id}"}
                             class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
                           >
-                            <option value="weather" selected={@edit_type == "weather"}>☀️ Weather</option>
+                            <option value="weather" selected={@edit_type == "weather"}>
+                              ☀️ Weather
+                            </option>
                             <option value="news" selected={@edit_type == "news"}>📰 News</option>
-                            <option value="interest" selected={@edit_type == "interest"}>✨ Interest</option>
-                            <option value="competitor" selected={@edit_type == "competitor"}>🏢 Competitor</option>
+                            <option value="interest" selected={@edit_type == "interest"}>
+                              ✨ Interest
+                            </option>
+                            <option value="competitor" selected={@edit_type == "competitor"}>
+                              🏢 Competitor
+                            </option>
                             <option value="stock" selected={@edit_type == "stock"}>📈 Stock</option>
                             <option value="agenda" selected={@edit_type == "agenda"}>📅 Agenda</option>
                             <option value="habit" selected={@edit_type == "habit"}>✅ Habit</option>
@@ -1000,40 +1099,105 @@ defmodule CheckDayWeb.DashboardLive do
                           </select>
                         </div>
                         <div>
-                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Label</label>
-                          <input type="text" value={@edit_label} phx-keyup="update_edit_label" phx-key="" name="label" id={"edit-label-#{block.id}"} class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700" />
+                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                            Label
+                          </label>
+                          <input
+                            type="text"
+                            value={@edit_label}
+                            phx-keyup="update_edit_label"
+                            phx-key=""
+                            name="label"
+                            id={"edit-label-#{block.id}"}
+                            class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
+                          />
                         </div>
                       </div>
                       <div>
                         <div class="flex items-center justify-between mb-1">
-                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">Config</label>
-                          <button phx-click="add_edit_config_row" type="button" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400" id={"add-edit-config-row-#{block.id}"}>+ Add field</button>
+                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                            Config
+                          </label>
+                          <button
+                            phx-click="add_edit_config_row"
+                            type="button"
+                            class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400"
+                            id={"add-edit-config-row-#{block.id}"}
+                          >
+                            + Add field
+                          </button>
                         </div>
                         <%= for {row, idx} <- Enum.with_index(@edit_config_rows) do %>
-                          <div class="flex items-center gap-2 mb-2" id={"edit-config-row-#{block.id}-#{idx}"}>
-                            <input type="text" value={row.key} phx-keyup="update_edit_config_key" phx-value-index={idx} phx-key="" placeholder="key" id={"edit-config-key-#{block.id}-#{idx}"} class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500" />
-                            <input type="text" value={row.value} phx-keyup="update_edit_config_value" phx-value-index={idx} phx-key="" placeholder="value" id={"edit-config-val-#{block.id}-#{idx}"} class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500" />
-                            <button phx-click="remove_edit_config_row" phx-value-index={idx} type="button" class="p-1 text-gray-400 hover:text-red-500 transition-colors" id={"remove-edit-config-#{block.id}-#{idx}"}>
+                          <div
+                            class="flex items-center gap-2 mb-2"
+                            id={"edit-config-row-#{block.id}-#{idx}"}
+                          >
+                            <input
+                              type="text"
+                              value={row.key}
+                              phx-keyup="update_edit_config_key"
+                              phx-value-index={idx}
+                              phx-key=""
+                              placeholder="key"
+                              id={"edit-config-key-#{block.id}-#{idx}"}
+                              class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
+                            />
+                            <input
+                              type="text"
+                              value={row.value}
+                              phx-keyup="update_edit_config_value"
+                              phx-value-index={idx}
+                              phx-key=""
+                              placeholder="value"
+                              id={"edit-config-val-#{block.id}-#{idx}"}
+                              class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
+                            />
+                            <button
+                              phx-click="remove_edit_config_row"
+                              phx-value-index={idx}
+                              type="button"
+                              class="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                              id={"remove-edit-config-#{block.id}-#{idx}"}
+                            >
                               <.icon name="hero-x-mark" class="w-4 h-4" />
                             </button>
                           </div>
                         <% end %>
                       </div>
                       <div class="flex gap-2 justify-end">
-                        <button phx-click="cancel_edit" class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600" id={"cancel-edit-#{block.id}"}>Cancel</button>
-                        <button phx-click="save_edit" class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all dark:bg-indigo-500 dark:hover:bg-indigo-600" id={"save-edit-#{block.id}"}>Save</button>
+                        <button
+                          phx-click="cancel_edit"
+                          class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                          id={"cancel-edit-#{block.id}"}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          phx-click="save_edit"
+                          class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                          id={"save-edit-#{block.id}"}
+                        >
+                          Save
+                        </button>
                       </div>
                     </div>
                   </div>
                 <% else %>
-                  <div class={["rounded-xl border p-4 transition-all duration-200", type_bg(block.type)]} id={"manage-block-#{block.id}"}>
+                  <div
+                    class={["rounded-xl border p-4 transition-all duration-200", type_bg(block.type)]}
+                    id={"manage-block-#{block.id}"}
+                  >
                     <div class="flex items-start gap-3">
                       <div class={["shrink-0 mt-0.5", type_icon_color(block.type)]}>
                         <.icon name={type_icon(block.type)} class="w-5 h-5" />
                       </div>
                       <div class="flex-1 min-w-0">
-                        <p class={["font-medium text-sm truncate", type_label_color(block.type)]}>{block.label}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">{block.type}</p>
+                        <p class={["font-medium text-sm truncate", type_label_color(block.type)]}>
+                          {block.label}
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">
+                          {block.type}
+                        </p>
                         <%= if block.config && block.config != %{} do %>
                           <div class="mt-1.5 flex flex-wrap gap-1">
                             <%= for {k, v} <- block.config do %>
@@ -1045,10 +1209,21 @@ defmodule CheckDayWeb.DashboardLive do
                         <% end %>
                       </div>
                       <div class="flex items-center gap-1 shrink-0">
-                        <button phx-click="start_edit" phx-value-block-id={block.id} class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all dark:hover:text-indigo-400 dark:hover:bg-indigo-950/40" id={"edit-btn-#{block.id}"}>
+                        <button
+                          phx-click="start_edit"
+                          phx-value-block-id={block.id}
+                          class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all dark:hover:text-indigo-400 dark:hover:bg-indigo-950/40"
+                          id={"edit-btn-#{block.id}"}
+                        >
                           <.icon name="hero-pencil-square" class="w-4 h-4" />
                         </button>
-                        <button phx-click="delete_block" phx-value-block-id={block.id} data-confirm="Remove this block from your digest?" class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all dark:hover:text-red-400 dark:hover:bg-red-950/40" id={"delete-btn-#{block.id}"}>
+                        <button
+                          phx-click="delete_block"
+                          phx-value-block-id={block.id}
+                          data-confirm="Remove this block from your digest?"
+                          class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all dark:hover:text-red-400 dark:hover:bg-red-950/40"
+                          id={"delete-btn-#{block.id}"}
+                        >
                           <.icon name="hero-trash" class="w-4 h-4" />
                         </button>
                       </div>
@@ -1063,7 +1238,12 @@ defmodule CheckDayWeb.DashboardLive do
         <%!-- Floating Voice Assistant --%>
         <div id="voice-assistant-container">
           <%!-- ElevenLabs Hook (hidden, for managing the conversation) --%>
-          <div id="dashboard-elevenlabs-hook" phx-hook=".DashboardElevenLabs" phx-update="ignore" class="hidden" />
+          <div
+            id="dashboard-elevenlabs-hook"
+            phx-hook=".DashboardElevenLabs"
+            phx-update="ignore"
+            class="hidden"
+          />
 
           <%!-- Floating Mic Button --%>
           <%= unless @show_voice_panel do %>
@@ -1079,7 +1259,10 @@ defmodule CheckDayWeb.DashboardLive do
               ]}
               id="voice-fab-btn"
             >
-              <.icon name="hero-microphone" class="w-7 h-7 group-hover:scale-110 transition-transform" />
+              <.icon
+                name="hero-microphone"
+                class="w-7 h-7 group-hover:scale-110 transition-transform"
+              />
             </button>
           <% end %>
 
@@ -1098,7 +1281,8 @@ defmodule CheckDayWeb.DashboardLive do
               <div class={[
                 "px-5 py-4 border-b flex items-center justify-between",
                 if(@conversation_status in [:connected, :speaking, :listening],
-                  do: "border-indigo-200 bg-indigo-50/50 dark:border-indigo-800 dark:bg-indigo-950/30",
+                  do:
+                    "border-indigo-200 bg-indigo-50/50 dark:border-indigo-800 dark:bg-indigo-950/30",
                   else: "border-gray-100 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/50"
                 )
               ]}>
@@ -1164,7 +1348,11 @@ defmodule CheckDayWeb.DashboardLive do
               </div>
 
               <%!-- Transcript --%>
-              <div class="border-t border-gray-100 dark:border-gray-700 px-4 py-3 max-h-48 overflow-y-auto" id="dashboard-transcript" phx-hook=".TranscriptScroll">
+              <div
+                class="border-t border-gray-100 dark:border-gray-700 px-4 py-3 max-h-48 overflow-y-auto"
+                id="dashboard-transcript"
+                phx-hook=".TranscriptScroll"
+              >
                 <h4 class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
                   Transcript
                 </h4>
@@ -1178,7 +1366,8 @@ defmodule CheckDayWeb.DashboardLive do
                       <div class={[
                         "text-xs rounded-lg px-2.5 py-1.5",
                         if(entry.source == "ai",
-                          do: "bg-indigo-50 text-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300",
+                          do:
+                            "bg-indigo-50 text-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300",
                           else: "bg-gray-50 text-gray-700 dark:bg-gray-700/50 dark:text-gray-200"
                         )
                       ]}>

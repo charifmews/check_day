@@ -11,9 +11,13 @@ defmodule CheckDayWeb.OnboardingLive do
   def mount(_params, _session, socket) do
     user = socket.assigns.current_user
 
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(CheckDay.PubSub, "user:#{user.id}")
-    end
+    socket =
+      if connected?(socket) do
+        Phoenix.PubSub.subscribe(CheckDay.PubSub, "user:#{user.id}")
+        maybe_save_timezone(socket, user)
+      else
+        socket
+      end
 
     blocks = load_user_blocks(user.id)
 
@@ -147,8 +151,23 @@ defmodule CheckDayWeb.OnboardingLive do
 
   defp format_blocks_for_agent(blocks) do
     blocks
-    |> Enum.map(fn block -> "block_id: #{block.id}, type: #{block.type}, label: #{block.label}" end)
+    |> Enum.map(fn block ->
+      "block_id: #{block.id}, type: #{block.type}, label: #{block.label}"
+    end)
     |> Enum.join(", ")
+  end
+
+  defp maybe_save_timezone(socket, user) do
+    timezone = get_connect_params(socket)["timezone"]
+
+    if timezone && timezone != "" && user.timezone in [nil, "Etc/UTC"] do
+      case Ash.update(user, %{timezone: timezone}, action: :update_profile, authorize?: false) do
+        {:ok, _} -> socket
+        {:error, _} -> socket
+      end
+    else
+      socket
+    end
   end
 
   defp load_user_blocks(user_id) do
@@ -234,7 +253,8 @@ defmodule CheckDayWeb.OnboardingLive do
               class={[
                 "rounded-2xl border-2 p-8 transition-all duration-300",
                 if(@conversation_status in [:connected, :speaking, :listening],
-                  do: "border-indigo-300 bg-indigo-50/50 shadow-lg shadow-indigo-100 dark:border-indigo-700 dark:bg-indigo-950/30 dark:shadow-indigo-900/30",
+                  do:
+                    "border-indigo-300 bg-indigo-50/50 shadow-lg shadow-indigo-100 dark:border-indigo-700 dark:bg-indigo-950/30 dark:shadow-indigo-900/30",
                   else: "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
                 )
               ]}
@@ -260,7 +280,12 @@ defmodule CheckDayWeb.OnboardingLive do
               </div>
 
               <%!-- ElevenLabs Hook (hidden, separate from buttons so LiveView can re-render them) --%>
-              <div id="elevenlabs-hook" phx-hook=".ElevenLabsConversation" phx-update="ignore" class="hidden" />
+              <div
+                id="elevenlabs-hook"
+                phx-hook=".ElevenLabsConversation"
+                phx-update="ignore"
+                class="hidden"
+              />
 
               <%!-- Mic Button --%>
               <div class="flex justify-center mb-6">
@@ -339,7 +364,10 @@ defmodule CheckDayWeb.OnboardingLive do
 
           <%!-- Right: Profile Card with Digest Blocks --%>
           <div class="space-y-6">
-            <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-6" id="profile-card">
+            <div
+              class="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-6"
+              id="profile-card"
+            >
               <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
                 Your Daily Digest
               </h3>
