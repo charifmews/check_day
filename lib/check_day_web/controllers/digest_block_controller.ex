@@ -158,19 +158,23 @@ defmodule CheckDayWeb.DigestBlockController do
     Ash.create(DigestBlock, attrs, authorize?: false)
   end
 
-  defp find_block(user, %{"block_id" => block_id}) when is_binary(block_id) do
+  defp find_block(user, %{"block_id" => block_id} = params) when is_binary(block_id) do
     case Ash.get(DigestBlock, block_id, authorize?: false) do
       {:ok, block} ->
         if block.user_id == user.id,
           do: {:ok, block},
-          else: {:error, :block_not_found}
+          else: find_block_by_label(user, params)
 
       {:error, _} ->
-        {:error, :block_not_found}
+        find_block_by_label(user, params)
     end
   end
 
-  defp find_block(user, %{"label" => label}) when is_binary(label) do
+  defp find_block(user, %{"label" => _} = params), do: find_block_by_label(user, params)
+
+  defp find_block(_, _), do: {:error, :block_not_found}
+
+  defp find_block_by_label(user, %{"label" => label}) when is_binary(label) do
     user_id = user.id
 
     DigestBlock
@@ -182,7 +186,7 @@ defmodule CheckDayWeb.DigestBlockController do
     end
   end
 
-  defp find_block(_, _), do: {:error, :block_not_found}
+  defp find_block_by_label(_, _), do: {:error, :block_not_found}
 
   defp destroy_block(block) do
     case Ash.destroy(block, authorize?: false) do

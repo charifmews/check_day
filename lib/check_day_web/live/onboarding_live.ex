@@ -31,6 +31,8 @@ defmodule CheckDayWeb.OnboardingLive do
   def handle_event("start_conversation", _params, socket) do
     agent_id = Application.get_env(:check_day, :eleven_labs_agent_id)
     user = socket.assigns.current_user
+    blocks = load_user_blocks(user.id)
+    existing_blocks = format_blocks_for_agent(blocks)
 
     case ElevenLabs.get_conversation_signed_link(agent_id: agent_id) do
       {:ok, %{body: %{"signed_url" => signed_url}}} ->
@@ -39,7 +41,10 @@ defmodule CheckDayWeb.OnboardingLive do
          |> assign(:conversation_status, :connecting)
          |> push_event("start_conversation", %{
            signed_url: signed_url,
-           user_id: user.id
+           user_id: user.id,
+           existing_blocks: existing_blocks,
+           first_name: user.first_name || "",
+           digest_time: first_digest_time(user.digest_times || default_digest_times())
          })}
 
       {:ok, response} ->
@@ -136,6 +141,14 @@ defmodule CheckDayWeb.OnboardingLive do
   defp first_digest_time(digest_times) do
     # Show the most common time (typically all are the same during onboarding)
     Map.get(digest_times, "1", "07:00")
+  end
+
+  defp format_blocks_for_agent([]), do: "None"
+
+  defp format_blocks_for_agent(blocks) do
+    blocks
+    |> Enum.map(fn block -> "block_id: #{block.id}, type: #{block.type}, label: #{block.label}" end)
+    |> Enum.join(", ")
   end
 
   defp load_user_blocks(user_id) do
@@ -396,7 +409,7 @@ defmodule CheckDayWeb.OnboardingLive do
           mounted() {
             this.conversation = null;
 
-            this.handleEvent("start_conversation", async ({ signed_url, user_id }) => {
+            this.handleEvent("start_conversation", async ({ signed_url, user_id, existing_blocks, first_name, digest_time }) => {
               try {
                 // Request microphone permission before starting the session
                 await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -406,7 +419,10 @@ defmodule CheckDayWeb.OnboardingLive do
                 this.conversation = await Conversation.startSession({
                   signedUrl: signed_url,
                   dynamicVariables: {
-                    user_id: user_id
+                    user_id: user_id,
+                    existing_blocks: existing_blocks,
+                    first_name: first_name,
+                    digest_time: digest_time
                   },
                   onMessage: (props) => {
                     console.log("ElevenLabs message:", props);
