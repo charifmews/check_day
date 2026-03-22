@@ -335,16 +335,6 @@ defmodule CheckDayWeb.OnboardingLive do
               </div>
             </div>
 
-            <%!-- Skip onboarding link --%>
-            <div class="text-center">
-              <.link
-                navigate={~p"/dashboard"}
-                class="text-sm text-gray-400 hover:text-gray-600 transition-colors"
-                id="skip-onboarding"
-              >
-                Skip for now →
-              </.link>
-            </div>
           </div>
         </div>
       </div>
