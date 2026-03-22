@@ -21,7 +21,7 @@ defmodule CheckDayWeb.DashboardLive do
 
       blocks = load_user_blocks(user.id)
       today = Date.utc_today()
-      week_start = Date.beginning_of_week(today, :monday)
+      week_start = today
 
       {:ok,
        socket
@@ -51,7 +51,7 @@ defmodule CheckDayWeb.DashboardLive do
 
     {:noreply,
      assign(socket,
-       week_start: Date.beginning_of_week(today, :monday),
+       week_start: today,
        open_day_menu: nil
      )}
   end
@@ -255,43 +255,43 @@ defmodule CheckDayWeb.DashboardLive do
 
   defp type_bg(type) do
     case type do
-      :weather -> "bg-sky-50 border-sky-200"
-      :news -> "bg-purple-50 border-purple-200"
-      :interest -> "bg-amber-50 border-amber-200"
-      :competitor -> "bg-red-50 border-red-200"
-      :stock -> "bg-emerald-50 border-emerald-200"
-      :agenda -> "bg-blue-50 border-blue-200"
-      :habit -> "bg-green-50 border-green-200"
-      :custom -> "bg-gray-50 border-gray-200"
-      _ -> "bg-gray-50 border-gray-200"
+      :weather -> "bg-sky-50 border-sky-200 dark:bg-sky-950/40 dark:border-sky-800"
+      :news -> "bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800"
+      :interest -> "bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800"
+      :competitor -> "bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-800"
+      :stock -> "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800"
+      :agenda -> "bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800"
+      :habit -> "bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-800"
+      :custom -> "bg-gray-50 border-gray-200 dark:bg-gray-800/40 dark:border-gray-700"
+      _ -> "bg-gray-50 border-gray-200 dark:bg-gray-800/40 dark:border-gray-700"
     end
   end
 
   defp type_icon_color(type) do
     case type do
-      :weather -> "text-sky-600"
-      :news -> "text-purple-600"
-      :interest -> "text-amber-600"
-      :competitor -> "text-red-600"
-      :stock -> "text-emerald-600"
-      :agenda -> "text-blue-600"
-      :habit -> "text-green-600"
-      :custom -> "text-gray-600"
-      _ -> "text-gray-600"
+      :weather -> "text-sky-600 dark:text-sky-400"
+      :news -> "text-purple-600 dark:text-purple-400"
+      :interest -> "text-amber-600 dark:text-amber-400"
+      :competitor -> "text-red-600 dark:text-red-400"
+      :stock -> "text-emerald-600 dark:text-emerald-400"
+      :agenda -> "text-blue-600 dark:text-blue-400"
+      :habit -> "text-green-600 dark:text-green-400"
+      :custom -> "text-gray-600 dark:text-gray-400"
+      _ -> "text-gray-600 dark:text-gray-400"
     end
   end
 
   defp type_label_color(type) do
     case type do
-      :weather -> "text-sky-800"
-      :news -> "text-purple-800"
-      :interest -> "text-amber-800"
-      :competitor -> "text-red-800"
-      :stock -> "text-emerald-800"
-      :agenda -> "text-blue-800"
-      :habit -> "text-green-800"
-      :custom -> "text-gray-800"
-      _ -> "text-gray-800"
+      :weather -> "text-sky-800 dark:text-sky-300"
+      :news -> "text-purple-800 dark:text-purple-300"
+      :interest -> "text-amber-800 dark:text-amber-300"
+      :competitor -> "text-red-800 dark:text-red-300"
+      :stock -> "text-emerald-800 dark:text-emerald-300"
+      :agenda -> "text-blue-800 dark:text-blue-300"
+      :habit -> "text-green-800 dark:text-green-300"
+      :custom -> "text-gray-800 dark:text-gray-300"
+      _ -> "text-gray-800 dark:text-gray-300"
     end
   end
 
@@ -305,11 +305,11 @@ defmodule CheckDayWeb.DashboardLive do
         <%!-- Header --%>
         <div class="flex items-center justify-between mb-8">
           <div>
-            <h1 class="text-3xl font-bold text-gray-900" id="dashboard-title">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100" id="dashboard-title">
               Your Week
             </h1>
             <div class="flex items-center gap-3 mt-1">
-              <p class="text-gray-500" id="dashboard-subtitle">
+              <p class="text-gray-500 dark:text-gray-400" id="dashboard-subtitle">
                 {month_label(@week_start)}
               </p>
             </div>
@@ -319,20 +319,20 @@ defmodule CheckDayWeb.DashboardLive do
             <button
               phx-click="prev_week"
               class={[
-                "p-2 rounded-lg border border-gray-200 bg-white",
-                "hover:bg-gray-50 hover:border-gray-300",
+                "p-2 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700",
+                "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
                 "transition-all duration-200"
               ]}
               id="prev-week-btn"
             >
-              <.icon name="hero-chevron-left" class="w-5 h-5 text-gray-600" />
+              <.icon name="hero-chevron-left" class="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
 
             <button
               phx-click="this_week"
               class={[
-                "px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600",
-                "hover:bg-gray-50 hover:border-gray-300",
+                "px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300",
+                "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
                 "transition-all duration-200"
               ]}
               id="this-week-btn"
@@ -343,23 +343,23 @@ defmodule CheckDayWeb.DashboardLive do
             <button
               phx-click="next_week"
               class={[
-                "p-2 rounded-lg border border-gray-200 bg-white",
-                "hover:bg-gray-50 hover:border-gray-300",
+                "p-2 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700",
+                "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
                 "transition-all duration-200"
               ]}
               id="next-week-btn"
             >
-              <.icon name="hero-chevron-right" class="w-5 h-5 text-gray-600" />
+              <.icon name="hero-chevron-right" class="w-5 h-5 text-gray-600 dark:text-gray-300" />
             </button>
 
-            <div class="w-px h-8 bg-gray-200 mx-2" />
+            <div class="w-px h-8 bg-gray-200 dark:bg-gray-700 mx-2" />
 
             <.link
               navigate={~p"/onboarding"}
               class={[
                 "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium",
-                "bg-indigo-50 text-indigo-700 border border-indigo-200",
-                "hover:bg-indigo-100 hover:border-indigo-300",
+                "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
+                "hover:bg-indigo-100 hover:border-indigo-300 dark:hover:bg-indigo-900/50 dark:hover:border-indigo-700",
                 "transition-all duration-200"
               ]}
               id="rerun-onboarding-btn"
@@ -380,13 +380,13 @@ defmodule CheckDayWeb.DashboardLive do
                 "rounded-xl border flex flex-col min-h-[420px] transition-all duration-200 relative",
                 cond do
                   is_disabled ->
-                    "border-gray-200 bg-gray-50/80 opacity-50"
+                    "border-gray-200 bg-gray-50/80 opacity-50 dark:border-gray-700 dark:bg-gray-800/50"
 
                   day == @today ->
-                    "border-indigo-300 bg-indigo-50/20 shadow-md ring-1 ring-indigo-200/50"
+                    "border-indigo-300 bg-indigo-50/20 shadow-md ring-1 ring-indigo-200/50 dark:border-indigo-700 dark:bg-indigo-950/30 dark:ring-indigo-800/50"
 
                   true ->
-                    "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                    "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600"
                 end
               ]}
               id={"day-#{day}"}
@@ -398,13 +398,13 @@ defmodule CheckDayWeb.DashboardLive do
                   "transition-all duration-200",
                   cond do
                     is_disabled ->
-                      "border-gray-200 bg-gray-100/50"
+                      "border-gray-200 bg-gray-100/50 dark:border-gray-700 dark:bg-gray-800/50"
 
                     day == @today ->
-                      "border-indigo-200/60 bg-indigo-50/50"
+                      "border-indigo-200/60 bg-indigo-50/50 dark:border-indigo-800/60 dark:bg-indigo-950/30"
 
                     true ->
-                      "border-gray-100"
+                      "border-gray-100 dark:border-gray-700"
                   end
                 ]}
                 id={"day-header-#{day}"}
@@ -415,8 +415,8 @@ defmodule CheckDayWeb.DashboardLive do
                   phx-value-date={Date.to_iso8601(day)}
                   class={[
                     "absolute top-2 right-2 p-1 rounded-md cursor-pointer",
-                    "hover:bg-gray-200/60 transition-all duration-150",
-                    "text-gray-300 hover:text-gray-500"
+                    "hover:bg-gray-200/60 transition-all duration-150 dark:hover:bg-gray-600/40",
+                    "text-gray-300 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-300"
                   ]}
                   id={"day-menu-btn-#{day}"}
                 >
@@ -428,9 +428,9 @@ defmodule CheckDayWeb.DashboardLive do
                   <p class={[
                     "text-xs font-semibold uppercase tracking-wider",
                     cond do
-                      is_disabled -> "text-gray-400 line-through"
-                      day == @today -> "text-indigo-600"
-                      true -> "text-gray-400"
+                      is_disabled -> "text-gray-400 line-through dark:text-gray-500"
+                      day == @today -> "text-indigo-600 dark:text-indigo-400"
+                      true -> "text-gray-400 dark:text-gray-500"
                     end
                   ]}>
                     {day_name(day)}
@@ -438,9 +438,9 @@ defmodule CheckDayWeb.DashboardLive do
                   <p class={[
                     "text-xl font-bold",
                     cond do
-                      is_disabled -> "text-gray-400"
-                      day == @today -> "text-indigo-700"
-                      true -> "text-gray-800"
+                      is_disabled -> "text-gray-400 dark:text-gray-500"
+                      day == @today -> "text-indigo-700 dark:text-indigo-300"
+                      true -> "text-gray-800 dark:text-gray-200"
                     end
                   ]}>
                     {day_number(day)}
@@ -459,7 +459,7 @@ defmodule CheckDayWeb.DashboardLive do
                         name="time"
                         id={"time-#{day}"}
                         phx-hook=".TimePicker"
-                        class="text-xs font-medium text-indigo-600 bg-indigo-50/50 border border-indigo-100 rounded-md px-1.5 py-0.5 cursor-pointer focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300 w-[85px] text-center"
+                        class="text-xs font-medium text-indigo-600 bg-indigo-50/50 border border-indigo-100 rounded-md px-1.5 py-0.5 cursor-pointer focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300 w-[85px] text-center dark:text-indigo-400 dark:bg-indigo-950/30 dark:border-indigo-800 dark:focus:ring-indigo-700 dark:focus:border-indigo-700"
                       />
                     </form>
                   <% end %>
@@ -469,13 +469,13 @@ defmodule CheckDayWeb.DashboardLive do
                 <%= cond do %>
                   <% is_weekly_off -> %>
                     <div class="text-center mt-1">
-                      <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 font-medium">
+                      <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 font-medium dark:bg-orange-900/40 dark:text-orange-400">
                         Every {day_name(day)}
                       </span>
                     </div>
                   <% is_date_skipped -> %>
                     <div class="text-center mt-1">
-                      <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">
+                      <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-medium dark:bg-red-900/40 dark:text-red-400">
                         Skipped
                       </span>
                     </div>
@@ -488,7 +488,7 @@ defmodule CheckDayWeb.DashboardLive do
                 <div
                   class={[
                     "absolute top-8 right-0 z-20",
-                    "bg-white rounded-xl shadow-xl border border-gray-200 p-1.5 w-48",
+                    "bg-white rounded-xl shadow-xl border border-gray-200 p-1.5 w-48 dark:bg-gray-800 dark:border-gray-700",
                     "animate-[slideIn_0.15s_ease-out]"
                   ]}
                   id={"day-menu-#{day}"}
@@ -502,8 +502,8 @@ defmodule CheckDayWeb.DashboardLive do
                       "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-sm cursor-pointer",
                       "transition-all duration-150",
                       if(is_date_skipped,
-                        do: "bg-red-50 text-red-700 hover:bg-red-100",
-                        else: "text-gray-700 hover:bg-gray-50"
+                        do: "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/40",
+                        else: "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
                       )
                     ]}
                     id={"skip-date-#{day}"}
@@ -522,7 +522,7 @@ defmodule CheckDayWeb.DashboardLive do
                     </div>
                   </button>
 
-                  <div class="h-px bg-gray-100 mx-2 my-1" />
+                  <div class="h-px bg-gray-100 dark:bg-gray-700 mx-2 my-1" />
 
                   <%!-- Toggle this day every week --%>
                   <button
@@ -532,8 +532,8 @@ defmodule CheckDayWeb.DashboardLive do
                       "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-sm cursor-pointer",
                       "transition-all duration-150",
                       if(is_weekly_off,
-                        do: "bg-orange-50 text-orange-700 hover:bg-orange-100",
-                        else: "text-gray-700 hover:bg-gray-50"
+                        do: "bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-400 dark:hover:bg-orange-900/40",
+                        else: "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
                       )
                     ]}
                     id={"toggle-weekly-#{day}"}
@@ -559,13 +559,13 @@ defmodule CheckDayWeb.DashboardLive do
               <%!-- Digest Blocks --%>
               <div class="p-2 flex-1 space-y-1.5 overflow-y-auto" id={"day-blocks-#{day}"}>
                 <%= if is_disabled do %>
-                  <div class="flex flex-col items-center justify-center h-full text-gray-300">
+                  <div class="flex flex-col items-center justify-center h-full text-gray-300 dark:text-gray-600">
                     <.icon name="hero-no-symbol" class="w-6 h-6 mb-1 opacity-40" />
                     <p class="text-[10px]">Day off</p>
                   </div>
                 <% else %>
                   <%= if @blocks == [] do %>
-                    <div class="flex flex-col items-center justify-center h-full text-gray-300">
+                    <div class="flex flex-col items-center justify-center h-full text-gray-300 dark:text-gray-600">
                       <.icon name="hero-inbox" class="w-6 h-6 mb-1 opacity-40" />
                       <p class="text-[10px]">No blocks</p>
                     </div>
@@ -581,7 +581,7 @@ defmodule CheckDayWeb.DashboardLive do
                           "transition-all duration-200 group/block cursor-pointer",
                           if(is_block_active,
                             do: ["hover:shadow-sm", type_bg(block.type)],
-                            else: "bg-gray-50 border-gray-200 opacity-40 hover:opacity-60"
+                            else: "bg-gray-50 border-gray-200 opacity-40 hover:opacity-60 dark:bg-gray-800 dark:border-gray-700"
                           )
                         ]}
                         id={"block-#{block.id}-#{day}"}
@@ -616,19 +616,19 @@ defmodule CheckDayWeb.DashboardLive do
         <%!-- Empty State --%>
         <%= if @blocks == [] do %>
           <div
-            class="mt-8 text-center py-12 rounded-2xl border-2 border-dashed border-gray-200"
+            class="mt-8 text-center py-12 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700"
             id="empty-state"
           >
-            <.icon name="hero-inbox" class="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 class="text-lg font-semibold text-gray-600 mb-2">No digest blocks yet</h3>
-            <p class="text-gray-400 mb-4">Set up your daily digest with a voice conversation</p>
+            <.icon name="hero-inbox" class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+            <h3 class="text-lg font-semibold text-gray-600 dark:text-gray-300 mb-2">No digest blocks yet</h3>
+            <p class="text-gray-400 dark:text-gray-500 mb-4">Set up your daily digest with a voice conversation</p>
             <.link
               navigate={~p"/onboarding"}
               class={[
                 "inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium",
                 "bg-gradient-to-r from-indigo-500 to-purple-600 text-white",
                 "hover:from-indigo-600 hover:to-purple-700",
-                "shadow-lg shadow-indigo-200 transition-all duration-200"
+                "shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 transition-all duration-200"
               ]}
               id="start-onboarding-btn"
             >

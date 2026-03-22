@@ -39,7 +39,7 @@ defmodule CheckDayWeb.Layouts do
       <div class="flex-1">
         <a href="/" class="flex items-center gap-2.5 group">
           <img src={~p"/images/logo.svg"} class="w-8 h-8 transition-transform group-hover:scale-105" />
-          <span class="text-lg font-bold text-gray-900 tracking-tight">
+          <span class="text-lg font-bold text-gray-900 dark:text-gray-100 tracking-tight">
             Check<span class="text-[oklch(70%_0.213_47.604)]">.</span>Day
           </span>
         </a>
@@ -51,8 +51,8 @@ defmodule CheckDayWeb.Layouts do
             href="/sign-out"
             class={[
               "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium",
-              "text-gray-600 border border-gray-200 bg-white",
-              "hover:bg-red-50 hover:border-red-200 hover:text-red-600",
+              "text-gray-600 border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300",
+              "hover:bg-red-50 hover:border-red-200 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:border-red-800 dark:hover:text-red-400",
               "transition-all duration-200"
             ]}
             id="header-sign-out"
@@ -124,7 +124,7 @@ defmodule CheckDayWeb.Layouts do
   def theme_toggle(assigns) do
     ~H"""
     <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
-      <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 transition-[left]" />
+      <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme-mode=light]_&]:left-1/3 [[data-theme-mode=dark]_&]:left-2/3 transition-[left]" />
 
       <button
         class="flex p-2 cursor-pointer w-1/3"

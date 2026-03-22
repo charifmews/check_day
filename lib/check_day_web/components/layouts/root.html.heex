@@ -17,20 +17,46 @@
     </script>
     <script>
       (() => {
+        const applyTheme = (theme) => {
+          document.documentElement.setAttribute("data-theme", theme);
+        };
+        const setMode = (mode) => {
+          document.documentElement.setAttribute("data-theme-mode", mode);
+        };
+        const resolveSystemTheme = () => {
+          return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        };
         const setTheme = (theme) => {
           if (theme === "system") {
             localStorage.removeItem("phx:theme");
-            document.documentElement.removeAttribute("data-theme");
+            localStorage.setItem("phx:theme-mode", "system");
+            applyTheme(resolveSystemTheme());
+            setMode("system");
           } else {
             localStorage.setItem("phx:theme", theme);
-            document.documentElement.setAttribute("data-theme", theme);
+            localStorage.removeItem("phx:theme-mode");
+            applyTheme(theme);
+            setMode(theme);
           }
         };
-        if (!document.documentElement.hasAttribute("data-theme")) {
-          setTheme(localStorage.getItem("phx:theme") || "system");
+        // Initialize
+        const saved = localStorage.getItem("phx:theme");
+        const mode = localStorage.getItem("phx:theme-mode");
+        if (saved) {
+          applyTheme(saved);
+          setMode(saved);
+        } else {
+          applyTheme(resolveSystemTheme());
+          setMode("system");
+          if (!mode) localStorage.setItem("phx:theme-mode", "system");
         }
+        // Listen for OS theme changes when in system mode
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+          if (localStorage.getItem("phx:theme-mode") === "system") {
+            applyTheme(resolveSystemTheme());
+          }
+        });
         window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
-        
         window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
       })();
     </script>

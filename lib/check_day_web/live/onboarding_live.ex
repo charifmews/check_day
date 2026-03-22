@@ -161,15 +161,15 @@ defmodule CheckDayWeb.OnboardingLive do
 
   defp type_color(type) do
     case type do
-      :weather -> "bg-sky-100 text-sky-700"
-      :news -> "bg-purple-100 text-purple-700"
-      :interest -> "bg-amber-100 text-amber-700"
-      :competitor -> "bg-red-100 text-red-700"
-      :stock -> "bg-emerald-100 text-emerald-700"
-      :agenda -> "bg-blue-100 text-blue-700"
-      :habit -> "bg-green-100 text-green-700"
-      :custom -> "bg-gray-100 text-gray-700"
-      _ -> "bg-gray-100 text-gray-700"
+      :weather -> "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400"
+      :news -> "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400"
+      :interest -> "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+      :competitor -> "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+      :stock -> "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+      :agenda -> "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+      :habit -> "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
+      :custom -> "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+      _ -> "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
     end
   end
 
@@ -204,10 +204,10 @@ defmodule CheckDayWeb.OnboardingLive do
       <div class="max-w-6xl mx-auto px-4 py-8">
         <%!-- Header --%>
         <div class="text-center mb-10">
-          <h1 class="text-3xl font-bold text-gray-900 mb-2" id="onboarding-title">
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2" id="onboarding-title">
             Set up your daily digest
           </h1>
-          <p class="text-gray-500 text-lg" id="onboarding-subtitle">
+          <p class="text-gray-500 dark:text-gray-400 text-lg" id="onboarding-subtitle">
             Have a conversation and I'll set up your personalized daily briefing.
           </p>
         </div>
@@ -221,8 +221,8 @@ defmodule CheckDayWeb.OnboardingLive do
               class={[
                 "rounded-2xl border-2 p-8 transition-all duration-300",
                 if(@conversation_status in [:connected, :speaking, :listening],
-                  do: "border-indigo-300 bg-indigo-50/50 shadow-lg shadow-indigo-100",
-                  else: "border-gray-200 bg-white"
+                  do: "border-indigo-300 bg-indigo-50/50 shadow-lg shadow-indigo-100 dark:border-indigo-700 dark:bg-indigo-950/30 dark:shadow-indigo-900/30",
+                  else: "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
                 )
               ]}
             >
@@ -231,8 +231,8 @@ defmodule CheckDayWeb.OnboardingLive do
                 <div class={[
                   "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
                   if(@conversation_status in [:connected, :speaking, :listening],
-                    do: "bg-indigo-100 text-indigo-700",
-                    else: "bg-gray-100 text-gray-600"
+                    do: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
+                    else: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
                   )
                 ]}>
                   <div class={[
@@ -260,7 +260,7 @@ defmodule CheckDayWeb.OnboardingLive do
                       "w-24 h-24 rounded-full flex items-center justify-center",
                       "bg-gradient-to-br from-indigo-500 to-purple-600 text-white",
                       "hover:from-indigo-600 hover:to-purple-700 hover:scale-105",
-                      "transition-all duration-200 shadow-lg shadow-indigo-200",
+                      "transition-all duration-200 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30",
                       "focus:outline-none focus:ring-4 focus:ring-indigo-200"
                     ]}
                     id="start-conversation-btn"
@@ -274,7 +274,7 @@ defmodule CheckDayWeb.OnboardingLive do
                       "w-24 h-24 rounded-full flex items-center justify-center",
                       "bg-gradient-to-br from-red-500 to-rose-600 text-white",
                       "hover:from-red-600 hover:to-rose-700 hover:scale-105",
-                      "transition-all duration-200 shadow-lg shadow-red-200",
+                      "transition-all duration-200 shadow-lg shadow-red-200 dark:shadow-red-900/30",
                       "focus:outline-none focus:ring-4 focus:ring-red-200"
                     ]}
                     id="end-conversation-btn"
@@ -284,7 +284,7 @@ defmodule CheckDayWeb.OnboardingLive do
                 <% end %>
               </div>
 
-              <p class="text-center text-sm text-gray-500">
+              <p class="text-center text-sm text-gray-500 dark:text-gray-400">
                 <%= if @conversation_status == :idle do %>
                   Click the microphone to start a conversation
                 <% else %>
@@ -295,14 +295,14 @@ defmodule CheckDayWeb.OnboardingLive do
 
             <%!-- Transcript --%>
             <div
-              class="rounded-2xl border border-gray-200 bg-white p-6 max-h-72 overflow-y-auto"
+              class="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-6 max-h-72 overflow-y-auto"
               id="transcript-container"
             >
-              <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
+              <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
                 Conversation
               </h3>
               <%= if @transcript == [] do %>
-                <p class="text-gray-400 text-sm italic">
+                <p class="text-gray-400 dark:text-gray-500 text-sm italic">
                   Transcript will appear here once you start talking...
                 </p>
               <% else %>
@@ -311,8 +311,8 @@ defmodule CheckDayWeb.OnboardingLive do
                     <div class={[
                       "text-sm rounded-lg px-3 py-2",
                       if(entry.source == "agent",
-                        do: "bg-indigo-50 text-indigo-800",
-                        else: "bg-gray-50 text-gray-800"
+                        do: "bg-indigo-50 text-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300",
+                        else: "bg-gray-50 text-gray-800 dark:bg-gray-700/50 dark:text-gray-200"
                       )
                     ]}>
                       <span class="font-medium">
@@ -328,18 +328,18 @@ defmodule CheckDayWeb.OnboardingLive do
 
           <%!-- Right: Profile Card with Digest Blocks --%>
           <div class="space-y-6">
-            <div class="rounded-2xl border border-gray-200 bg-white p-6" id="profile-card">
-              <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
+            <div class="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 p-6" id="profile-card">
+              <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-4">
                 Your Daily Digest
               </h3>
 
               <%!-- Digest Time Picker --%>
               <div
-                class="flex items-center gap-2 mb-4 p-3 rounded-xl bg-indigo-50/50 border border-indigo-100"
+                class="flex items-center gap-2 mb-4 p-3 rounded-xl bg-indigo-50/50 border border-indigo-100 dark:bg-indigo-950/30 dark:border-indigo-800"
                 id="onboarding-time-picker"
               >
-                <.icon name="hero-clock" class="w-4 h-4 text-indigo-500" />
-                <span class="text-sm text-gray-600">Daily at</span>
+                <.icon name="hero-clock" class="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+                <span class="text-sm text-gray-600 dark:text-gray-400">Daily at</span>
                 <input
                   type="time"
                   value={first_digest_time(@digest_times)}
@@ -347,14 +347,14 @@ defmodule CheckDayWeb.OnboardingLive do
                   phx-debounce="500"
                   name="time"
                   id="onboarding-time-input"
-                  class="text-sm font-semibold text-indigo-700 bg-transparent border-none p-0 cursor-pointer focus:ring-0 w-[70px]"
+                  class="text-sm font-semibold text-indigo-700 dark:text-indigo-400 bg-transparent border-none p-0 cursor-pointer focus:ring-0 w-[70px]"
                 />
               </div>
 
               <div id="digest-blocks" phx-update="stream">
                 <div
                   id="empty-blocks"
-                  class="hidden only:flex flex-col items-center justify-center py-12 text-gray-400"
+                  class="hidden only:flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-500"
                 >
                   <.icon name="hero-inbox" class="w-12 h-12 mb-3 opacity-50" />
                   <p class="text-sm">No blocks yet — start a conversation to add some!</p>
@@ -364,8 +364,8 @@ defmodule CheckDayWeb.OnboardingLive do
                   :for={{id, block} <- @streams.digest_blocks}
                   id={id}
                   class={[
-                    "flex items-center gap-3 p-4 rounded-xl border border-gray-100",
-                    "hover:border-gray-200 hover:shadow-sm",
+                    "flex items-center gap-3 p-4 rounded-xl border border-gray-100 dark:border-gray-700",
+                    "hover:border-gray-200 hover:shadow-sm dark:hover:border-gray-600",
                     "transition-all duration-200 mb-3",
                     "animate-[slideIn_0.3s_ease-out]"
                   ]}
@@ -377,8 +377,8 @@ defmodule CheckDayWeb.OnboardingLive do
                     <.icon name={type_icon(block.type)} class="w-5 h-5" />
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="font-medium text-gray-900 truncate">{block.label}</p>
-                    <p class="text-xs text-gray-500 capitalize">{block.type}</p>
+                    <p class="font-medium text-gray-900 dark:text-gray-100 truncate">{block.label}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 capitalize">{block.type}</p>
                   </div>
                   <div class={["px-2 py-0.5 rounded-full text-xs font-medium", type_color(block.type)]}>
                     {block.type}
