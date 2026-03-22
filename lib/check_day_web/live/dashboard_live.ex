@@ -39,7 +39,10 @@ defmodule CheckDayWeb.DashboardLive do
        |> assign(:add_config_rows, [])
        |> assign(:edit_type, "weather")
        |> assign(:edit_label, "")
-       |> assign(:edit_config_rows, [])}
+       |> assign(:edit_config_rows, [])
+       |> assign(:conversation_status, :idle)
+       |> assign(:transcript, [])
+       |> assign(:show_voice_panel, false)}
     end
   end
 
@@ -327,6 +330,65 @@ defmodule CheckDayWeb.DashboardLive do
     end
   end
 
+  # Voice conversation events
+  def handle_event("toggle_voice_panel", _params, socket) do
+    {:noreply, assign(socket, :show_voice_panel, !socket.assigns.show_voice_panel)}
+  end
+
+  def handle_event("start_conversation", _params, socket) do
+    agent_id = Application.get_env(:check_day, :eleven_labs_agent_id)
+    user = socket.assigns.current_user
+    blocks = socket.assigns.blocks
+    existing_blocks = format_blocks_for_agent(blocks)
+
+    case ElevenLabs.get_conversation_signed_link(agent_id: agent_id) do
+      {:ok, %{body: %{"signed_url" => signed_url}}} ->
+        {:noreply,
+         socket
+         |> assign(:conversation_status, :connecting)
+         |> assign(:show_voice_panel, true)
+         |> push_event("start_conversation", %{
+           signed_url: signed_url,
+           user_id: user.id,
+           existing_blocks: existing_blocks,
+           first_name: user.first_name || "",
+           digest_time: first_digest_time(user.digest_times || default_digest_times())
+         })}
+
+      {:ok, _response} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Unexpected API response format")
+         |> assign(:conversation_status, :error)}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Failed to start conversation: #{inspect(reason)}")
+         |> assign(:conversation_status, :error)}
+    end
+  end
+
+  def handle_event("end_conversation", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:conversation_status, :idle)
+     |> push_event("end_conversation", %{})}
+  end
+
+  def handle_event("status_change", %{"status" => status}, socket) do
+    {:noreply, assign(socket, :conversation_status, parse_status(status))}
+  end
+
+  def handle_event("transcript_update", %{"message" => message, "source" => source}, socket) do
+    entry = %{source: source, message: message, id: System.unique_integer([:positive])}
+    {:noreply, assign(socket, :transcript, socket.assigns.transcript ++ [entry])}
+  end
+
+  def handle_event("conversation_ended", _params, socket) do
+    {:noreply, assign(socket, :conversation_status, :idle)}
+  end
+
   # PubSub handlers
   @impl true
   def handle_info({:digest_update, {:block_added, _block}}, socket) do
@@ -417,6 +479,42 @@ defmodule CheckDayWeb.DashboardLive do
     days = block.active_days || [1, 2, 3, 4, 5, 6, 7]
     day_num in days
   end
+
+  defp format_blocks_for_agent([]), do: "None"
+
+  defp format_blocks_for_agent(blocks) do
+    blocks
+    |> Enum.map(fn block -> "block_id: #{block.id}, type: #{block.type}, label: #{block.label}" end)
+    |> Enum.join(", ")
+  end
+
+  defp first_digest_time(digest_times) do
+    Map.get(digest_times, "1", "07:00")
+  end
+
+  @known_statuses %{
+    "idle" => :idle,
+    "connecting" => :connecting,
+    "connected" => :connected,
+    "speaking" => :speaking,
+    "listening" => :listening,
+    "disconnecting" => :disconnecting,
+    "disconnected" => :idle,
+    "error" => :error
+  }
+
+  defp parse_status(status) when is_binary(status) do
+    Map.get(@known_statuses, status, :idle)
+  end
+
+  defp status_text(:idle), do: "Ready to start"
+  defp status_text(:connecting), do: "Connecting..."
+  defp status_text(:connected), do: "Connected — start talking!"
+  defp status_text(:speaking), do: "Agent is speaking..."
+  defp status_text(:listening), do: "Listening..."
+  defp status_text(:disconnecting), do: "Disconnecting..."
+  defp status_text(:error), do: "Connection error"
+  defp status_text(_), do: ""
 
   defp type_icon(type) do
     case type do
@@ -961,6 +1059,141 @@ defmodule CheckDayWeb.DashboardLive do
             </div>
           <% end %>
         </div>
+
+        <%!-- Floating Voice Assistant --%>
+        <div id="voice-assistant-container">
+          <%!-- ElevenLabs Hook (hidden, for managing the conversation) --%>
+          <div id="dashboard-elevenlabs-hook" phx-hook=".DashboardElevenLabs" phx-update="ignore" class="hidden" />
+
+          <%!-- Floating Mic Button --%>
+          <%= unless @show_voice_panel do %>
+            <button
+              phx-click="toggle_voice_panel"
+              class={[
+                "fixed bottom-8 right-8 z-50 w-16 h-16 rounded-full flex items-center justify-center",
+                "bg-gradient-to-br from-indigo-500 to-purple-600 text-white",
+                "hover:from-indigo-600 hover:to-purple-700 hover:scale-110",
+                "transition-all duration-300 shadow-xl shadow-indigo-300/40 dark:shadow-indigo-900/40",
+                "focus:outline-none focus:ring-4 focus:ring-indigo-200 dark:focus:ring-indigo-800",
+                "group"
+              ]}
+              id="voice-fab-btn"
+            >
+              <.icon name="hero-microphone" class="w-7 h-7 group-hover:scale-110 transition-transform" />
+            </button>
+          <% end %>
+
+          <%!-- Voice Panel (slide-up from bottom-right) --%>
+          <%= if @show_voice_panel do %>
+            <div
+              class={[
+                "fixed bottom-8 right-8 z-50 w-[380px] rounded-2xl overflow-hidden",
+                "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700",
+                "shadow-2xl shadow-gray-300/50 dark:shadow-black/40",
+                "animate-[slideUp_0.3s_ease-out]"
+              ]}
+              id="voice-panel"
+            >
+              <%!-- Panel Header --%>
+              <div class={[
+                "px-5 py-4 border-b flex items-center justify-between",
+                if(@conversation_status in [:connected, :speaking, :listening],
+                  do: "border-indigo-200 bg-indigo-50/50 dark:border-indigo-800 dark:bg-indigo-950/30",
+                  else: "border-gray-100 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/50"
+                )
+              ]}>
+                <div class="flex items-center gap-2.5">
+                  <div class={[
+                    "w-2.5 h-2.5 rounded-full",
+                    if(@conversation_status in [:connected, :speaking, :listening],
+                      do: "bg-indigo-500 animate-pulse",
+                      else: "bg-gray-400"
+                    )
+                  ]} />
+                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {status_text(@conversation_status)}
+                  </span>
+                </div>
+                <button
+                  phx-click="toggle_voice_panel"
+                  class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-all"
+                  id="close-voice-panel-btn"
+                >
+                  <.icon name="hero-x-mark" class="w-5 h-5" />
+                </button>
+              </div>
+
+              <%!-- Mic Control --%>
+              <div class="flex flex-col items-center py-6">
+                <%= if @conversation_status == :idle do %>
+                  <button
+                    phx-click="start_conversation"
+                    class={[
+                      "w-20 h-20 rounded-full flex items-center justify-center",
+                      "bg-gradient-to-br from-indigo-500 to-purple-600 text-white",
+                      "hover:from-indigo-600 hover:to-purple-700 hover:scale-105",
+                      "transition-all duration-200 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30",
+                      "focus:outline-none focus:ring-4 focus:ring-indigo-200 dark:focus:ring-indigo-800"
+                    ]}
+                    id="dashboard-start-conversation-btn"
+                  >
+                    <.icon name="hero-microphone" class="w-9 h-9" />
+                  </button>
+                <% else %>
+                  <button
+                    phx-click="end_conversation"
+                    class={[
+                      "w-20 h-20 rounded-full flex items-center justify-center",
+                      "bg-gradient-to-br from-red-500 to-rose-600 text-white",
+                      "hover:from-red-600 hover:to-rose-700 hover:scale-105",
+                      "transition-all duration-200 shadow-lg shadow-red-200 dark:shadow-red-900/30",
+                      "focus:outline-none focus:ring-4 focus:ring-red-200 dark:focus:ring-red-800"
+                    ]}
+                    id="dashboard-end-conversation-btn"
+                  >
+                    <.icon name="hero-stop" class="w-9 h-9" />
+                  </button>
+                <% end %>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-3">
+                  <%= if @conversation_status == :idle do %>
+                    Tap to talk — manage blocks & times by voice
+                  <% else %>
+                    Tap to stop the conversation
+                  <% end %>
+                </p>
+              </div>
+
+              <%!-- Transcript --%>
+              <div class="border-t border-gray-100 dark:border-gray-700 px-4 py-3 max-h-48 overflow-y-auto" id="dashboard-transcript" phx-hook=".TranscriptScroll">
+                <h4 class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
+                  Transcript
+                </h4>
+                <%= if @transcript == [] do %>
+                  <p class="text-xs text-gray-400 dark:text-gray-500 italic">
+                    Conversation will appear here...
+                  </p>
+                <% else %>
+                  <div class="space-y-1.5">
+                    <%= for entry <- @transcript do %>
+                      <div class={[
+                        "text-xs rounded-lg px-2.5 py-1.5",
+                        if(entry.source == "ai",
+                          do: "bg-indigo-50 text-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300",
+                          else: "bg-gray-50 text-gray-700 dark:bg-gray-700/50 dark:text-gray-200"
+                        )
+                      ]}>
+                        <span class="font-semibold">
+                          {if entry.source == "ai", do: "Maya", else: "You"}:
+                        </span>
+                        {entry.message}
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
       </div>
     </Layouts.app>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".TimePicker">
@@ -971,6 +1204,76 @@ defmodule CheckDayWeb.DashboardLive do
               try { this.el.showPicker() } catch(_) {}
             }
           })
+        }
+      }
+    </script>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".TranscriptScroll">
+      export default {
+        mounted() { this.el.scrollTop = this.el.scrollHeight; },
+        updated() { this.el.scrollTop = this.el.scrollHeight; }
+      }
+    </script>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".DashboardElevenLabs">
+      import { Conversation } from "@elevenlabs/client";
+
+      export default {
+        mounted() {
+          this.conversation = null;
+
+          this.handleEvent("start_conversation", async ({ signed_url, user_id, existing_blocks, first_name, digest_time }) => {
+            try {
+              await navigator.mediaDevices.getUserMedia({ audio: true });
+
+              this.conversation = await Conversation.startSession({
+                signedUrl: signed_url,
+                dynamicVariables: {
+                  user_id: user_id,
+                  existing_blocks: existing_blocks,
+                  first_name: first_name,
+                  digest_time: digest_time
+                },
+                onMessage: (props) => {
+                  if (this.el.isConnected) {
+                    this.pushEvent("transcript_update", {
+                      message: props.message,
+                      source: props.source
+                    });
+                  }
+                },
+                onStatusChange: ({ status }) => {
+                  if (this.el.isConnected) {
+                    this.pushEvent("status_change", { status });
+                  }
+                },
+                onDisconnect: (details) => {
+                  if (this.el.isConnected) {
+                    this.pushEvent("conversation_ended", {});
+                  }
+                },
+                onError: (message, context) => {
+                  console.error("ElevenLabs error:", message, context);
+                }
+              });
+            } catch (error) {
+              console.error("ElevenLabs conversation error:", error);
+              if (this.el.isConnected) {
+                this.pushEvent("status_change", { status: "error" });
+              }
+            }
+          });
+
+          this.handleEvent("end_conversation", async () => {
+            if (this.conversation) {
+              await this.conversation.endSession();
+              this.conversation = null;
+            }
+          });
+        },
+
+        destroyed() {
+          if (this.conversation) {
+            this.conversation.endSession();
+          }
         }
       }
     </script>
