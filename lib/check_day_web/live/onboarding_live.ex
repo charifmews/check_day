@@ -246,13 +246,11 @@ defmodule CheckDayWeb.OnboardingLive do
                 </div>
               </div>
 
+              <%!-- ElevenLabs Hook (hidden, separate from buttons so LiveView can re-render them) --%>
+              <div id="elevenlabs-hook" phx-hook=".ElevenLabsConversation" phx-update="ignore" class="hidden" />
+
               <%!-- Mic Button --%>
-              <div
-                class="flex justify-center mb-6"
-                phx-hook=".ElevenLabsConversation"
-                id="elevenlabs-hook"
-                phx-update="ignore"
-              >
+              <div class="flex justify-center mb-6">
                 <%= if @conversation_status == :idle do %>
                   <button
                     phx-click="start_conversation"
