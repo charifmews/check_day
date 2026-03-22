@@ -75,7 +75,8 @@ defmodule CheckDay.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:firecrawl, "~> 0.1.0"}
+      {:firecrawl, "~> 0.1.0"},
+      {:eleven_labs, "~> 0.1.0"}
     ]
   end
 
