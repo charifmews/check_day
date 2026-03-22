@@ -426,18 +426,24 @@ defmodule CheckDayWeb.OnboardingLive do
                   },
                   onMessage: (props) => {
                     console.log("ElevenLabs message:", props);
-                    this.pushEvent("transcript_update", {
-                      message: props.message,
-                      source: props.source
-                    });
+                    if (this.el.isConnected) {
+                      this.pushEvent("transcript_update", {
+                        message: props.message,
+                        source: props.source
+                      });
+                    }
                   },
                   onStatusChange: ({ status }) => {
                     console.log("ElevenLabs status:", status);
-                    this.pushEvent("status_change", { status });
+                    if (this.el.isConnected) {
+                      this.pushEvent("status_change", { status });
+                    }
                   },
                   onDisconnect: (details) => {
                     console.log("ElevenLabs disconnected:", details);
-                    this.pushEvent("conversation_ended", {});
+                    if (this.el.isConnected) {
+                      this.pushEvent("conversation_ended", {});
+                    }
                   },
                   onError: (message, context) => {
                     console.error("ElevenLabs error:", message, context);
@@ -447,7 +453,9 @@ defmodule CheckDayWeb.OnboardingLive do
                 console.log("ElevenLabs session started successfully");
               } catch (error) {
                 console.error("ElevenLabs conversation error:", error);
-                this.pushEvent("status_change", { status: "error" });
+                if (this.el.isConnected) {
+                  this.pushEvent("status_change", { status: "error" });
+                }
               }
             });
 
