@@ -51,7 +51,7 @@ config :spark,
 config :check_day,
   ecto_repos: [CheckDay.Repo],
   generators: [timestamp_type: :utc_datetime],
-  ash_domains: [CheckDay.Accounts],
+  ash_domains: [CheckDay.Accounts, CheckDay.Digests],
   ash_authentication: [return_error_on_invalid_magic_link_token?: true]
 
 # Configure the endpoint

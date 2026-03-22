@@ -42,6 +42,10 @@ defmodule CheckDay.Accounts.User do
   actions do
     defaults [:read]
 
+    update :update_profile do
+      accept [:first_name, :onboarding_completed]
+    end
+
     read :get_by_subject do
       description "Get a user by the subject claim in a JWT"
       argument :subject, :string, allow_nil?: false
@@ -104,6 +108,20 @@ defmodule CheckDay.Accounts.User do
       allow_nil? false
       public? true
     end
+
+    attribute :first_name, :string do
+      allow_nil? true
+      public? true
+    end
+
+    attribute :onboarding_completed, :boolean do
+      default false
+      public? true
+    end
+  end
+
+  relationships do
+    has_many :digest_blocks, CheckDay.Digests.DigestBlock
   end
 
   identities do

@@ -1,0 +1,77 @@
+defmodule CheckDay.Digests.DigestBlock do
+  use Ash.Resource,
+    otp_app: :check_day,
+    domain: CheckDay.Digests,
+    data_layer: AshPostgres.DataLayer
+
+  postgres do
+    table "digest_blocks"
+    repo CheckDay.Repo
+  end
+
+  actions do
+    defaults [:read, :destroy]
+
+    create :create do
+      primary? true
+      accept [:type, :label, :config, :position, :enabled, :user_id]
+    end
+
+    update :update do
+      accept [:label, :config, :position, :enabled]
+    end
+
+    update :reorder do
+      accept [:position]
+    end
+  end
+
+  attributes do
+    uuid_primary_key :id
+
+    attribute :type, :atom do
+      constraints one_of: [
+                    :weather,
+                    :news,
+                    :interest,
+                    :competitor,
+                    :stock,
+                    :agenda,
+                    :habit,
+                    :custom
+                  ]
+
+      allow_nil? false
+      public? true
+    end
+
+    attribute :label, :string do
+      allow_nil? false
+      public? true
+    end
+
+    attribute :config, :map do
+      default %{}
+      public? true
+    end
+
+    attribute :position, :integer do
+      default 0
+      public? true
+    end
+
+    attribute :enabled, :boolean do
+      default true
+      public? true
+    end
+
+    create_timestamp :inserted_at
+    update_timestamp :updated_at
+  end
+
+  relationships do
+    belongs_to :user, CheckDay.Accounts.User do
+      allow_nil? false
+    end
+  end
+end

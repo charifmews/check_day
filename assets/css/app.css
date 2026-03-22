@@ -127,3 +127,15 @@
   letter-spacing: -0.025em;
   color: oklch(70% 0.213 47.604);
 }
+
+/* Slide-in animation for digest blocks */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

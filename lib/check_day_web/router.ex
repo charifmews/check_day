@@ -21,6 +21,10 @@ defmodule CheckDayWeb.Router do
     plug :set_actor, :user
   end
 
+  pipeline :webhook do
+    plug :accepts, ["json"]
+  end
+
   scope "/", CheckDayWeb do
     pipe_through :browser
 
@@ -36,6 +40,7 @@ defmodule CheckDayWeb.Router do
       # If an authenticated user must *not* be present:
       # on_mount {CheckDayWeb.LiveUserAuth, :live_no_user}
       live "/dashboard", DashboardLive
+      live "/onboarding", OnboardingLive
     end
   end
 
@@ -75,10 +80,15 @@ defmodule CheckDayWeb.Router do
     )
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", CheckDayWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", CheckDayWeb do
+    pipe_through :webhook
+
+    scope "/tools" do
+      post "/add_block", DigestBlockController, :add_block
+      post "/remove_block", DigestBlockController, :remove_block
+      post "/complete_onboarding", DigestBlockController, :complete_onboarding
+    end
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:check_day, :dev_routes) do

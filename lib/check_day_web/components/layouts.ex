@@ -57,8 +57,7 @@ defmodule CheckDayWeb.Layouts do
             ]}
             id="header-sign-out"
           >
-            <.icon name="hero-arrow-right-start-on-rectangle-mini" class="w-4 h-4" />
-            Sign out
+            <.icon name="hero-arrow-right-start-on-rectangle-mini" class="w-4 h-4" /> Sign out
           </a>
         <% end %>
       </div>

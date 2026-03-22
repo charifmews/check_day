@@ -119,7 +119,7 @@ if config_env() == :prod do
       System.get_env("FIRECRAWL_API_KEY") ||
         raise("Missing environment variable `FIRECRAWL_API_KEY`!")
 
-  config :elevenlabs,
+  config :eleven_labs,
     api_key:
       System.get_env("ELEVENLABS_API_KEY") ||
         raise("Missing environment variable `ELEVENLABS_API_KEY`!")
