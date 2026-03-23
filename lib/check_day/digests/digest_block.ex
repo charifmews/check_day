@@ -7,6 +7,8 @@ defmodule CheckDay.Digests.DigestBlock do
   postgres do
     table "digest_blocks"
     repo CheckDay.Repo
+
+    migration_defaults active_days: "'[1,2,3,4,5,6,7]'"
   end
 
   actions do

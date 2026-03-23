@@ -120,37 +120,35 @@ defmodule CheckDay.Digests.DigestEmail do
   defp render_result(result) do
     headline = result[:headline] || "Untitled"
     summary = result[:digest_summary] || ""
-    quote_text = result[:verbatim_quote]
-    source_url = result[:source_url]
+    sources = result[:sources] || []
 
-    quote_html =
-      if quote_text do
-        """
-        <blockquote style="margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid #6366f1; color: #6b7280; font-size: 13px; font-style: italic;">
-          "#{escape(quote_text)}"
-        </blockquote>
-        """
-      else
-        ""
-      end
+    sources_html =
+      case Enum.reject(sources, fn {url, _} -> is_nil(url) end) do
+        [] ->
+          ""
 
-    source_html =
-      if source_url do
-        """
-        <p style="margin: 8px 0 0;">
-          <a href="#{source_url}" style="color: #6366f1; font-size: 12px; text-decoration: none;">Read source →</a>
-        </p>
-        """
-      else
-        ""
+        valid_sources ->
+          links =
+            valid_sources
+            |> Enum.map(fn {url, domain} ->
+              """
+              <a href="#{url}" style="color: #6366f1; font-size: 12px; text-decoration: none;">#{escape(domain)}</a>
+              """
+            end)
+            |> Enum.join(" · ")
+
+          """
+          <p style="margin: 8px 0 0; color: #9ca3af; font-size: 12px;">
+            Sources: #{links}
+          </p>
+          """
       end
 
     """
     <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #f3f4f6;">
       <h3 style="margin: 0 0 4px; color: #1f2937; font-size: 14px; font-weight: 600;">#{escape(headline)}</h3>
       <p style="margin: 0; color: #4b5563; font-size: 14px; line-height: 1.5;">#{escape(summary)}</p>
-      #{quote_html}
-      #{source_html}
+      #{sources_html}
     </div>
     """
   end

@@ -9,6 +9,9 @@ defmodule CheckDay.Accounts.User do
   postgres do
     table "users"
     repo CheckDay.Repo
+
+    migration_defaults active_days: "'[1,2,3,4,5,6,7]'",
+                       digest_times: "'{\"1\":\"07:00\",\"2\":\"07:00\",\"3\":\"07:00\",\"4\":\"07:00\",\"5\":\"07:00\",\"6\":\"07:00\",\"7\":\"07:00\"}'"
   end
 
   authentication do
