@@ -76,7 +76,10 @@ defmodule CheckDay.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:firecrawl, "~> 0.1.0"},
-      {:eleven_labs, "~> 0.1.0"}
+      {:eleven_labs, "~> 0.1.0"},
+      {:oban, "~> 2.18"},
+      {:oban_live_dashboard, "~> 0.2"},
+      {:req_llm, "~> 1.8"}
     ]
   end
 

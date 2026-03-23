@@ -45,7 +45,6 @@ defmodule CheckDay.Accounts.User do
     update :update_profile do
       accept [
         :first_name,
-        :onboarding_completed,
         :active_days,
         :skipped_dates,
         :digest_times,
@@ -118,11 +117,6 @@ defmodule CheckDay.Accounts.User do
 
     attribute :first_name, :string do
       allow_nil? true
-      public? true
-    end
-
-    attribute :onboarding_completed, :boolean do
-      default false
       public? true
     end
 

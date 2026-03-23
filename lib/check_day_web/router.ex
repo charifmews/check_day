@@ -40,7 +40,6 @@ defmodule CheckDayWeb.Router do
       # If an authenticated user must *not* be present:
       # on_mount {CheckDayWeb.LiveUserAuth, :live_no_user}
       live "/dashboard", DashboardLive
-      live "/onboarding", OnboardingLive
     end
   end
 
@@ -86,8 +85,8 @@ defmodule CheckDayWeb.Router do
     scope "/tools" do
       post "/add_block", DigestBlockController, :add_block
       post "/remove_block", DigestBlockController, :remove_block
-      post "/complete_onboarding", DigestBlockController, :complete_onboarding
       post "/set_digest_time", DigestBlockController, :set_digest_time
+      post "/toggle_day", DigestBlockController, :toggle_day
     end
   end
 
@@ -103,7 +102,10 @@ defmodule CheckDayWeb.Router do
     scope "/dev" do
       pipe_through :browser
 
-      live_dashboard "/dashboard", metrics: CheckDayWeb.Telemetry
+      live_dashboard "/dashboard",
+        metrics: CheckDayWeb.Telemetry,
+        additional_pages: [oban: Oban.LiveDashboard]
+
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end

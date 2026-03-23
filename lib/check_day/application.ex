@@ -12,8 +12,7 @@ defmodule CheckDay.Application do
       CheckDay.Repo,
       {DNSCluster, query: Application.get_env(:check_day, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: CheckDay.PubSub},
-      # Start a worker by calling: CheckDay.Worker.start_link(arg)
-      # {CheckDay.Worker, arg},
+      {Oban, Application.fetch_env!(:check_day, Oban)},
       # Start to serve requests, typically the last entry
       CheckDayWeb.Endpoint,
       {AshAuthentication.Supervisor, [otp_app: :check_day]}

@@ -54,6 +54,10 @@ config :check_day,
   ash_domains: [CheckDay.Accounts, CheckDay.Digests],
   ash_authentication: [return_error_on_invalid_magic_link_token?: true]
 
+config :check_day, Oban,
+  repo: CheckDay.Repo,
+  queues: [default: 10]
+
 # Configure the endpoint
 config :check_day, CheckDayWeb.Endpoint,
   url: [host: "localhost"],

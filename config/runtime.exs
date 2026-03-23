@@ -134,6 +134,11 @@ if config_env() == :prod do
       System.get_env("ELEVENLABS_API_KEY") ||
         raise("Missing environment variable `ELEVENLABS_API_KEY`!")
 
+  config :req_llm, :openrouter,
+    api_key:
+      System.get_env("OPENROUTER_API_KEY") ||
+        raise("Missing environment variable `OPENROUTER_API_KEY`!")
+
   #       domain: System.get_env("MAILGUN_DOMAIN")
   #
   # Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,

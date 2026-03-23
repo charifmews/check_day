@@ -11,43 +11,40 @@ defmodule CheckDayWeb.DashboardLive do
   def mount(_params, _session, socket) do
     user = socket.assigns.current_user
 
-    # Redirect to onboarding if not completed
-    if not user.onboarding_completed do
-      {:ok, push_navigate(socket, to: ~p"/onboarding")}
-    else
-      socket =
-        if connected?(socket) do
-          Phoenix.PubSub.subscribe(CheckDay.PubSub, "user:#{user.id}")
-          maybe_save_timezone(socket, user)
-        else
-          socket
-        end
+    socket =
+      if connected?(socket) do
+        Phoenix.PubSub.subscribe(CheckDay.PubSub, "user:#{user.id}")
+        maybe_save_timezone(socket, user)
+      else
+        socket
+      end
 
-      blocks = load_user_blocks(user.id)
-      today = Date.utc_today()
-      week_start = today
+    blocks = load_user_blocks(user.id)
+    needs_onboarding = blocks == []
+    today = Date.utc_today()
+    week_start = today
 
-      {:ok,
-       socket
-       |> assign(:week_start, week_start)
-       |> assign(:today, today)
-       |> assign(:blocks, blocks)
-       |> assign(:user_active_days, user.active_days || [1, 2, 3, 4, 5, 6, 7])
-       |> assign(:skipped_dates, user.skipped_dates || [])
-       |> assign(:digest_times, user.digest_times || default_digest_times())
-       |> assign(:open_day_menu, nil)
-       |> assign(:show_add_form, false)
-       |> assign(:editing_block_id, nil)
-       |> assign(:add_type, "weather")
-       |> assign(:add_label, "")
-       |> assign(:add_config_rows, [])
-       |> assign(:edit_type, "weather")
-       |> assign(:edit_label, "")
-       |> assign(:edit_config_rows, [])
-       |> assign(:conversation_status, :idle)
-       |> assign(:transcript, [])
-       |> assign(:show_voice_panel, false)}
-    end
+    {:ok,
+     socket
+     |> assign(:week_start, week_start)
+     |> assign(:today, today)
+     |> assign(:blocks, blocks)
+     |> assign(:needs_onboarding, needs_onboarding)
+     |> assign(:user_active_days, user.active_days || [1, 2, 3, 4, 5, 6, 7])
+     |> assign(:skipped_dates, user.skipped_dates || [])
+     |> assign(:digest_times, user.digest_times || default_digest_times())
+     |> assign(:open_day_menu, nil)
+     |> assign(:show_add_form, false)
+     |> assign(:editing_block_id, nil)
+     |> assign(:add_type, "weather")
+     |> assign(:add_label, "")
+     |> assign(:add_config_rows, [])
+     |> assign(:edit_type, "weather")
+     |> assign(:edit_label, "")
+     |> assign(:edit_config_rows, [])
+     |> assign(:conversation_status, :idle)
+     |> assign(:transcript, [])
+     |> assign(:show_voice_panel, needs_onboarding)}
   end
 
   @impl true
@@ -351,6 +348,15 @@ defmodule CheckDayWeb.DashboardLive do
     blocks = socket.assigns.blocks
     existing_blocks = format_blocks_for_agent(blocks)
 
+    active_days = user.active_days || [1, 2, 3, 4, 5, 6, 7]
+    skipped_dates = user.skipped_dates || []
+    active_days_str = Enum.map_join(active_days, ", ", &day_of_week_name/1)
+
+    skipped_dates_str =
+      if skipped_dates == [],
+        do: "None",
+        else: Enum.map_join(skipped_dates, ", ", &Date.to_iso8601/1)
+
     case ElevenLabs.get_conversation_signed_link(agent_id: agent_id) do
       {:ok, %{body: %{"signed_url" => signed_url}}} ->
         {:noreply,
@@ -362,7 +368,9 @@ defmodule CheckDayWeb.DashboardLive do
            user_id: user.id,
            existing_blocks: existing_blocks,
            first_name: user.first_name || "",
-           digest_time: first_digest_time(user.digest_times || default_digest_times())
+           digest_time: first_digest_time(user.digest_times || default_digest_times()),
+           active_days: active_days_str,
+           skipped_dates: skipped_dates_str
          })}
 
       {:ok, _response} ->
@@ -403,7 +411,7 @@ defmodule CheckDayWeb.DashboardLive do
   @impl true
   def handle_info({:digest_update, {:block_added, _block}}, socket) do
     blocks = load_user_blocks(socket.assigns.current_user.id)
-    {:noreply, assign(socket, :blocks, blocks)}
+    {:noreply, socket |> assign(:blocks, blocks) |> assign(:needs_onboarding, false)}
   end
 
   def handle_info({:digest_update, {:block_removed, _block}}, socket) do
@@ -413,6 +421,14 @@ defmodule CheckDayWeb.DashboardLive do
 
   def handle_info({:digest_update, {:digest_times_changed, times}}, socket) do
     {:noreply, assign(socket, :digest_times, times)}
+  end
+
+  def handle_info({:digest_update, {:active_days_changed, new_days}}, socket) do
+    {:noreply, assign(socket, :user_active_days, new_days)}
+  end
+
+  def handle_info({:digest_update, {:skipped_dates_changed, new_skipped}}, socket) do
+    {:noreply, assign(socket, :skipped_dates, new_skipped)}
   end
 
   def handle_info({:digest_update, _}, socket), do: {:noreply, socket}
@@ -457,6 +473,15 @@ defmodule CheckDayWeb.DashboardLive do
   defp day_name(date), do: Calendar.strftime(date, "%a")
   defp day_number(date), do: Calendar.strftime(date, "%d")
   defp full_day_name(date), do: Calendar.strftime(date, "%A")
+
+  defp day_of_week_name(1), do: "Monday"
+  defp day_of_week_name(2), do: "Tuesday"
+  defp day_of_week_name(3), do: "Wednesday"
+  defp day_of_week_name(4), do: "Thursday"
+  defp day_of_week_name(5), do: "Friday"
+  defp day_of_week_name(6), do: "Saturday"
+  defp day_of_week_name(7), do: "Sunday"
+  defp day_of_week_name(_), do: "Unknown"
 
   defp default_digest_times do
     %{
@@ -604,636 +629,677 @@ defmodule CheckDayWeb.DashboardLive do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user}>
       <div class="w-full max-w-[1600px] mx-auto px-6 lg:px-10 py-8">
-        <%!-- Header --%>
-        <div class="flex items-center justify-between mb-8">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100" id="dashboard-title">
-              Your Week
+        <%= if @needs_onboarding do %>
+          <%!-- Onboarding Welcome Banner --%>
+          <div class="flex flex-col items-center justify-center min-h-[60vh]" id="onboarding-banner">
+            <div class="relative mb-8">
+              <div class="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-300/40 dark:shadow-indigo-900/40 animate-pulse">
+                <.icon name="hero-microphone" class="w-12 h-12 text-white" />
+              </div>
+              <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-green-400 border-2 border-white dark:border-gray-900 animate-bounce" />
+            </div>
+
+            <h1
+              class="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-3 text-center"
+              id="onboarding-title"
+            >
+              Welcome to CheckDay!
             </h1>
-            <div class="flex items-center gap-3 mt-1">
-              <p class="text-gray-500 dark:text-gray-400" id="dashboard-subtitle">
-                {month_label(@week_start)}
-              </p>
+            <p class="text-lg text-gray-500 dark:text-gray-400 mb-2 text-center max-w-lg">
+              Let's set up your personalized daily digest.
+            </p>
+            <p class="text-base text-gray-400 dark:text-gray-500 mb-10 text-center max-w-md">
+              Click the <span class="font-semibold text-indigo-500">microphone button</span>
+              in the bottom-right corner to start a conversation and I'll configure everything for you.
+            </p>
+
+            <div class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
+              <.icon name="hero-arrow-down-right" class="w-5 h-5 animate-bounce" />
+              <span>Your voice assistant is waiting</span>
+            </div>
+          </div>
+        <% else %>
+          <%!-- Header --%>
+          <div class="flex items-center justify-between mb-8">
+            <div>
+              <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100" id="dashboard-title">
+                Your Week
+              </h1>
+              <div class="flex items-center gap-3 mt-1">
+                <p class="text-gray-500 dark:text-gray-400" id="dashboard-subtitle">
+                  {month_label(@week_start)}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                phx-click="prev_week"
+                class={[
+                  "p-2 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700",
+                  "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
+                  "transition-all duration-200"
+                ]}
+                id="prev-week-btn"
+              >
+                <.icon name="hero-chevron-left" class="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              </button>
+
+              <button
+                phx-click="this_week"
+                class={[
+                  "px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300",
+                  "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
+                  "transition-all duration-200"
+                ]}
+                id="this-week-btn"
+              >
+                Today
+              </button>
+
+              <button
+                phx-click="next_week"
+                class={[
+                  "p-2 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700",
+                  "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
+                  "transition-all duration-200"
+                ]}
+                id="next-week-btn"
+              >
+                <.icon name="hero-chevron-right" class="w-5 h-5 text-gray-600 dark:text-gray-300" />
+              </button>
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <button
-              phx-click="prev_week"
-              class={[
-                "p-2 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700",
-                "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
-                "transition-all duration-200"
-              ]}
-              id="prev-week-btn"
-            >
-              <.icon name="hero-chevron-left" class="w-5 h-5 text-gray-600 dark:text-gray-300" />
-            </button>
-
-            <button
-              phx-click="this_week"
-              class={[
-                "px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300",
-                "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
-                "transition-all duration-200"
-              ]}
-              id="this-week-btn"
-            >
-              Today
-            </button>
-
-            <button
-              phx-click="next_week"
-              class={[
-                "p-2 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700",
-                "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
-                "transition-all duration-200"
-              ]}
-              id="next-week-btn"
-            >
-              <.icon name="hero-chevron-right" class="w-5 h-5 text-gray-600 dark:text-gray-300" />
-            </button>
-          </div>
-        </div>
-
-        <%!-- 7-Day Grid --%>
-        <div class="grid grid-cols-7 gap-3" id="week-grid">
-          <%= for day <- @days do %>
-            <% is_disabled = day_disabled?(day, @user_active_days, @skipped_dates) %>
-            <% is_weekly_off = day_weekly_off?(day, @user_active_days) %>
-            <% is_date_skipped = day_date_skipped?(day, @skipped_dates) %>
-            <div
-              class={[
-                "rounded-xl border flex flex-col min-h-[420px] transition-all duration-200 relative",
-                cond do
-                  is_disabled ->
-                    "border-gray-200 bg-gray-50/80 opacity-50 dark:border-gray-700 dark:bg-gray-800/50"
-
-                  day == @today ->
-                    "border-indigo-300 bg-indigo-50/20 shadow-md ring-1 ring-indigo-200/50 dark:border-indigo-700 dark:bg-indigo-950/30 dark:ring-indigo-800/50"
-
-                  true ->
-                    "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600"
-                end
-              ]}
-              id={"day-#{day}"}
-            >
-              <%!-- Day Header --%>
+          <%!-- 7-Day Grid --%>
+          <div class="grid grid-cols-7 gap-3" id="week-grid">
+            <%= for day <- @days do %>
+              <% is_disabled = day_disabled?(day, @user_active_days, @skipped_dates) %>
+              <% is_weekly_off = day_weekly_off?(day, @user_active_days) %>
+              <% is_date_skipped = day_date_skipped?(day, @skipped_dates) %>
               <div
                 class={[
-                  "px-3 py-3 border-b shrink-0 rounded-t-xl relative",
-                  "transition-all duration-200",
+                  "rounded-xl border flex flex-col min-h-[420px] transition-all duration-200 relative",
                   cond do
                     is_disabled ->
-                      "border-gray-200 bg-gray-100/50 dark:border-gray-700 dark:bg-gray-800/50"
+                      "border-gray-200 bg-gray-50/80 opacity-50 dark:border-gray-700 dark:bg-gray-800/50"
 
                     day == @today ->
-                      "border-indigo-200/60 bg-indigo-50/50 dark:border-indigo-800/60 dark:bg-indigo-950/30"
+                      "border-indigo-300 bg-indigo-50/20 shadow-md ring-1 ring-indigo-200/50 dark:border-indigo-700 dark:bg-indigo-950/30 dark:ring-indigo-800/50"
 
                     true ->
-                      "border-gray-100 dark:border-gray-700"
+                      "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600"
                   end
                 ]}
-                id={"day-header-#{day}"}
+                id={"day-#{day}"}
               >
-                <%!-- Menu icon button --%>
-                <button
-                  phx-click="toggle_day_menu"
-                  phx-value-date={Date.to_iso8601(day)}
-                  class={[
-                    "absolute top-2 right-2 p-1 rounded-md cursor-pointer",
-                    "hover:bg-gray-200/60 transition-all duration-150 dark:hover:bg-gray-600/40",
-                    "text-gray-300 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-300"
-                  ]}
-                  id={"day-menu-btn-#{day}"}
-                >
-                  <.icon name="hero-no-symbol-mini" class="w-4 h-4" />
-                </button>
-
-                <%!-- Centered day name + number --%>
-                <div class="text-center">
-                  <p class={[
-                    "text-xs font-semibold uppercase tracking-wider",
-                    cond do
-                      is_disabled -> "text-gray-400 line-through dark:text-gray-500"
-                      day == @today -> "text-indigo-600 dark:text-indigo-400"
-                      true -> "text-gray-400 dark:text-gray-500"
-                    end
-                  ]}>
-                    {day_name(day)}
-                  </p>
-                  <p class={[
-                    "text-xl font-bold",
-                    cond do
-                      is_disabled -> "text-gray-400 dark:text-gray-500"
-                      day == @today -> "text-indigo-700 dark:text-indigo-300"
-                      true -> "text-gray-800 dark:text-gray-200"
-                    end
-                  ]}>
-                    {day_number(day)}
-                  </p>
-                  <%= unless is_disabled do %>
-                    <form
-                      phx-change="update_digest_time"
-                      id={"time-form-#{day}"}
-                      class="flex items-center justify-center mt-1.5"
-                    >
-                      <input
-                        type="hidden"
-                        name="day"
-                        value={Integer.to_string(Date.day_of_week(day))}
-                      />
-                      <input
-                        type="time"
-                        value={get_day_time(@digest_times, day)}
-                        phx-debounce="500"
-                        name="time"
-                        id={"time-#{day}"}
-                        phx-hook=".TimePicker"
-                        class="text-xs font-medium text-indigo-600 bg-indigo-50/50 border border-indigo-100 rounded-md px-1.5 py-0.5 cursor-pointer focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300 w-[85px] text-center dark:text-indigo-400 dark:bg-indigo-950/30 dark:border-indigo-800 dark:focus:ring-indigo-700 dark:focus:border-indigo-700"
-                      />
-                    </form>
-                  <% end %>
-                </div>
-
-                <%!-- Status badge below number --%>
-                <%= cond do %>
-                  <% is_weekly_off -> %>
-                    <div class="text-center mt-1">
-                      <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 font-medium dark:bg-orange-900/40 dark:text-orange-400">
-                        Every {day_name(day)}
-                      </span>
-                    </div>
-                  <% is_date_skipped -> %>
-                    <div class="text-center mt-1">
-                      <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-medium dark:bg-red-900/40 dark:text-red-400">
-                        Skipped
-                      </span>
-                    </div>
-                  <% true -> %>
-                <% end %>
-              </div>
-
-              <%!-- Day Menu Popover --%>
-              <%= if @open_day_menu == day do %>
+                <%!-- Day Header --%>
                 <div
                   class={[
-                    "absolute top-8 right-0 z-20",
-                    "bg-white rounded-xl shadow-xl border border-gray-200 p-1.5 w-48 dark:bg-gray-800 dark:border-gray-700",
-                    "animate-[slideIn_0.15s_ease-out]"
+                    "px-3 py-3 border-b shrink-0 rounded-t-xl relative",
+                    "transition-all duration-200",
+                    cond do
+                      is_disabled ->
+                        "border-gray-200 bg-gray-100/50 dark:border-gray-700 dark:bg-gray-800/50"
+
+                      day == @today ->
+                        "border-indigo-200/60 bg-indigo-50/50 dark:border-indigo-800/60 dark:bg-indigo-950/30"
+
+                      true ->
+                        "border-gray-100 dark:border-gray-700"
+                    end
                   ]}
-                  id={"day-menu-#{day}"}
-                  phx-click-away="close_day_menu"
+                  id={"day-header-#{day}"}
                 >
-                  <%!-- Skip this specific date --%>
+                  <%!-- Menu icon button --%>
                   <button
-                    phx-click="skip_date"
+                    phx-click="toggle_day_menu"
                     phx-value-date={Date.to_iso8601(day)}
                     class={[
-                      "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-sm cursor-pointer",
-                      "transition-all duration-150",
-                      if(is_date_skipped,
-                        do:
-                          "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/40",
-                        else:
-                          "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
-                      )
+                      "absolute top-2 right-2 p-1 rounded-md cursor-pointer",
+                      "hover:bg-gray-200/60 transition-all duration-150 dark:hover:bg-gray-600/40",
+                      "text-gray-300 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-300"
                     ]}
-                    id={"skip-date-#{day}"}
+                    id={"day-menu-btn-#{day}"}
                   >
-                    <.icon
-                      name={if(is_date_skipped, do: "hero-arrow-uturn-left", else: "hero-calendar")}
-                      class="w-4 h-4 shrink-0"
-                    />
-                    <div>
-                      <p class="font-medium leading-tight">
-                        {if is_date_skipped, do: "Unskip this date", else: "Skip this date"}
-                      </p>
-                      <p class="text-[10px] opacity-60 leading-tight mt-0.5">
-                        {Calendar.strftime(day, "%b %d")} only
-                      </p>
-                    </div>
+                    <.icon name="hero-no-symbol-mini" class="w-4 h-4" />
                   </button>
 
-                  <div class="h-px bg-gray-100 dark:bg-gray-700 mx-2 my-1" />
-
-                  <%!-- Toggle this day every week --%>
-                  <button
-                    phx-click="toggle_weekly_day"
-                    phx-value-day={Date.day_of_week(day)}
-                    class={[
-                      "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-sm cursor-pointer",
-                      "transition-all duration-150",
-                      if(is_weekly_off,
-                        do:
-                          "bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-400 dark:hover:bg-orange-900/40",
-                        else:
-                          "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
-                      )
-                    ]}
-                    id={"toggle-weekly-#{day}"}
-                  >
-                    <.icon
-                      name={if(is_weekly_off, do: "hero-arrow-uturn-left", else: "hero-arrow-path")}
-                      class="w-4 h-4 shrink-0"
-                    />
-                    <div>
-                      <p class="font-medium leading-tight">
-                        {if is_weekly_off,
-                          do: "Enable #{full_day_name(day)}s",
-                          else: "Skip every #{full_day_name(day)}"}
-                      </p>
-                      <p class="text-[10px] opacity-60 leading-tight mt-0.5">
-                        Recurring weekly
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              <% end %>
-
-              <%!-- Digest Blocks --%>
-              <div class="p-2 flex-1 space-y-1.5 overflow-y-auto" id={"day-blocks-#{day}"}>
-                <%= if is_disabled do %>
-                  <div class="flex flex-col items-center justify-center h-full text-gray-300 dark:text-gray-600">
-                    <.icon name="hero-no-symbol" class="w-6 h-6 mb-1 opacity-40" />
-                    <p class="text-[10px]">Day off</p>
-                  </div>
-                <% else %>
-                  <%= if @blocks == [] do %>
-                    <div class="flex flex-col items-center justify-center h-full text-gray-300 dark:text-gray-600">
-                      <.icon name="hero-inbox" class="w-6 h-6 mb-1 opacity-40" />
-                      <p class="text-[10px]">No blocks</p>
-                    </div>
-                  <% else %>
-                    <%= for block <- @blocks do %>
-                      <% is_block_active = block_active_on_day?(block, day) %>
-                      <button
-                        phx-click="toggle_block_day"
-                        phx-value-block-id={block.id}
-                        phx-value-day={Date.day_of_week(day)}
-                        class={[
-                          "flex items-center gap-2 p-2 rounded-lg border w-full text-left",
-                          "transition-all duration-200 group/block cursor-pointer",
-                          if(is_block_active,
-                            do: ["hover:shadow-sm", type_bg(block.type)],
-                            else:
-                              "bg-gray-50 border-gray-200 opacity-40 hover:opacity-60 dark:bg-gray-800 dark:border-gray-700"
-                          )
-                        ]}
-                        id={"block-#{block.id}-#{day}"}
+                  <%!-- Centered day name + number --%>
+                  <div class="text-center">
+                    <p class={[
+                      "text-xs font-semibold uppercase tracking-wider",
+                      cond do
+                        is_disabled -> "text-gray-400 line-through dark:text-gray-500"
+                        day == @today -> "text-indigo-600 dark:text-indigo-400"
+                        true -> "text-gray-400 dark:text-gray-500"
+                      end
+                    ]}>
+                      {day_name(day)}
+                    </p>
+                    <p class={[
+                      "text-xl font-bold",
+                      cond do
+                        is_disabled -> "text-gray-400 dark:text-gray-500"
+                        day == @today -> "text-indigo-700 dark:text-indigo-300"
+                        true -> "text-gray-800 dark:text-gray-200"
+                      end
+                    ]}>
+                      {day_number(day)}
+                    </p>
+                    <%= unless is_disabled do %>
+                      <form
+                        phx-change="update_digest_time"
+                        id={"time-form-#{day}"}
+                        class="flex items-center justify-center mt-1.5"
                       >
-                        <div class={[
-                          "shrink-0",
-                          if(is_block_active,
-                            do: type_icon_color(block.type),
-                            else: "text-gray-400"
-                          )
-                        ]}>
-                          <.icon name={type_icon(block.type)} class="w-4 h-4" />
-                        </div>
-                        <span class={[
-                          "text-xs font-medium truncate flex-1",
-                          if(is_block_active,
-                            do: type_label_color(block.type),
-                            else: "text-gray-400 line-through"
-                          )
-                        ]}>
-                          {block.label}
-                        </span>
-                      </button>
+                        <input
+                          type="hidden"
+                          name="day"
+                          value={Integer.to_string(Date.day_of_week(day))}
+                        />
+                        <input
+                          type="time"
+                          value={get_day_time(@digest_times, day)}
+                          phx-debounce="500"
+                          name="time"
+                          id={"time-#{day}"}
+                          phx-hook=".TimePicker"
+                          class="text-xs font-medium text-indigo-600 bg-indigo-50/50 border border-indigo-100 rounded-md px-1.5 py-0.5 cursor-pointer focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300 w-[85px] text-center dark:text-indigo-400 dark:bg-indigo-950/30 dark:border-indigo-800 dark:focus:ring-indigo-700 dark:focus:border-indigo-700"
+                        />
+                      </form>
                     <% end %>
+                  </div>
+
+                  <%!-- Status badge below number --%>
+                  <%= cond do %>
+                    <% is_weekly_off -> %>
+                      <div class="text-center mt-1">
+                        <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 font-medium dark:bg-orange-900/40 dark:text-orange-400">
+                          Every {day_name(day)}
+                        </span>
+                      </div>
+                    <% is_date_skipped -> %>
+                      <div class="text-center mt-1">
+                        <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-medium dark:bg-red-900/40 dark:text-red-400">
+                          Skipped
+                        </span>
+                      </div>
+                    <% true -> %>
                   <% end %>
-                <% end %>
-              </div>
-            </div>
-          <% end %>
-        </div>
+                </div>
 
-        <%!-- Block Management --%>
-        <div class="mt-8" id="block-management">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Digest Blocks</h2>
-            <button
-              phx-click="toggle_add_form"
-              class={[
-                "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium",
-                "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
-                "hover:bg-indigo-100 hover:border-indigo-300 dark:hover:bg-indigo-900/50 dark:hover:border-indigo-700",
-                "transition-all duration-200"
-              ]}
-              id="toggle-add-form-btn"
-            >
-              <.icon name={if(@show_add_form, do: "hero-x-mark", else: "hero-plus")} class="w-4 h-4" />
-              {if @show_add_form, do: "Cancel", else: "Add Block"}
-            </button>
-          </div>
-
-          <%= if @show_add_form do %>
-            <div
-              class="mb-6 p-5 rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20"
-              id="add-block-form"
-            >
-              <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">New Block</h3>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Type
-                  </label>
-                  <select
-                    phx-change="update_add_type"
-                    name="type"
-                    id="add-block-type"
-                    class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
+                <%!-- Day Menu Popover --%>
+                <%= if @open_day_menu == day do %>
+                  <div
+                    class={[
+                      "absolute top-8 right-0 z-20",
+                      "bg-white rounded-xl shadow-xl border border-gray-200 p-1.5 w-48 dark:bg-gray-800 dark:border-gray-700",
+                      "animate-[slideIn_0.15s_ease-out]"
+                    ]}
+                    id={"day-menu-#{day}"}
+                    phx-click-away="close_day_menu"
                   >
-                    <option value="weather" selected={@add_type == "weather"}>☀️ Weather</option>
-                    <option value="news" selected={@add_type == "news"}>📰 News</option>
-                    <option value="interest" selected={@add_type == "interest"}>✨ Interest</option>
-                    <option value="competitor" selected={@add_type == "competitor"}>
-                      🏢 Competitor
-                    </option>
-                    <option value="stock" selected={@add_type == "stock"}>📈 Stock</option>
-                    <option value="agenda" selected={@add_type == "agenda"}>📅 Agenda</option>
-                    <option value="habit" selected={@add_type == "habit"}>✅ Habit</option>
-                    <option value="custom" selected={@add_type == "custom"}>🧩 Custom</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                    Label
-                  </label>
-                  <input
-                    type="text"
-                    value={@add_label}
-                    phx-keyup="update_add_label"
-                    phx-key=""
-                    name="label"
-                    id="add-block-label"
-                    placeholder="e.g. Amsterdam Weather"
-                    class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
-                  />
-                </div>
-              </div>
-              <%!-- Config Key/Value Rows --%>
-              <div class="mt-4">
-                <div class="flex items-center justify-between mb-2">
-                  <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">
-                    Config <span class="text-gray-400 dark:text-gray-500">(optional)</span>
-                  </label>
-                  <button
-                    phx-click="add_config_row"
-                    type="button"
-                    class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400 dark:hover:text-indigo-300"
-                    id="add-config-row-btn"
-                  >
-                    + Add field
-                  </button>
-                </div>
-                <%= for {row, idx} <- Enum.with_index(@add_config_rows) do %>
-                  <div class="flex items-center gap-2 mb-2" id={"add-config-row-#{idx}"}>
-                    <input
-                      type="text"
-                      value={row.key}
-                      phx-keyup="update_add_config_key"
-                      phx-value-index={idx}
-                      phx-key=""
-                      placeholder="key"
-                      id={"add-config-key-#{idx}"}
-                      class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
-                    />
-                    <input
-                      type="text"
-                      value={row.value}
-                      phx-keyup="update_add_config_value"
-                      phx-value-index={idx}
-                      phx-key=""
-                      placeholder="value"
-                      id={"add-config-val-#{idx}"}
-                      class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
-                    />
+                    <%!-- Skip this specific date --%>
                     <button
-                      phx-click="remove_add_config_row"
-                      phx-value-index={idx}
-                      type="button"
-                      class="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                      id={"remove-add-config-#{idx}"}
+                      phx-click="skip_date"
+                      phx-value-date={Date.to_iso8601(day)}
+                      class={[
+                        "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-sm cursor-pointer",
+                        "transition-all duration-150",
+                        if(is_date_skipped,
+                          do:
+                            "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/40",
+                          else:
+                            "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                        )
+                      ]}
+                      id={"skip-date-#{day}"}
                     >
-                      <.icon name="hero-x-mark" class="w-4 h-4" />
+                      <.icon
+                        name={if(is_date_skipped, do: "hero-arrow-uturn-left", else: "hero-calendar")}
+                        class="w-4 h-4 shrink-0"
+                      />
+                      <div>
+                        <p class="font-medium leading-tight">
+                          {if is_date_skipped, do: "Unskip this date", else: "Skip this date"}
+                        </p>
+                        <p class="text-[10px] opacity-60 leading-tight mt-0.5">
+                          {Calendar.strftime(day, "%b %d")} only
+                        </p>
+                      </div>
+                    </button>
+
+                    <div class="h-px bg-gray-100 dark:bg-gray-700 mx-2 my-1" />
+
+                    <%!-- Toggle this day every week --%>
+                    <button
+                      phx-click="toggle_weekly_day"
+                      phx-value-day={Date.day_of_week(day)}
+                      class={[
+                        "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-sm cursor-pointer",
+                        "transition-all duration-150",
+                        if(is_weekly_off,
+                          do:
+                            "bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-400 dark:hover:bg-orange-900/40",
+                          else:
+                            "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                        )
+                      ]}
+                      id={"toggle-weekly-#{day}"}
+                    >
+                      <.icon
+                        name={if(is_weekly_off, do: "hero-arrow-uturn-left", else: "hero-arrow-path")}
+                        class="w-4 h-4 shrink-0"
+                      />
+                      <div>
+                        <p class="font-medium leading-tight">
+                          {if is_weekly_off,
+                            do: "Enable #{full_day_name(day)}s",
+                            else: "Skip every #{full_day_name(day)}"}
+                        </p>
+                        <p class="text-[10px] opacity-60 leading-tight mt-0.5">
+                          Recurring weekly
+                        </p>
+                      </div>
                     </button>
                   </div>
                 <% end %>
-              </div>
-              <div class="mt-4 flex justify-end">
-                <button
-                  phx-click="add_block"
-                  disabled={@add_label == ""}
-                  class={[
-                    "inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                    if(@add_label == "",
-                      do:
-                        "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500",
-                      else:
-                        "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm dark:bg-indigo-500 dark:hover:bg-indigo-600"
-                    )
-                  ]}
-                  id="submit-add-block-btn"
-                >
-                  <.icon name="hero-plus" class="w-4 h-4" /> Add
-                </button>
-              </div>
-            </div>
-          <% end %>
 
-          <%= if @blocks == [] do %>
-            <div
-              class="text-center py-12 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700"
-              id="empty-state"
-            >
-              <.icon
-                name="hero-inbox"
-                class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4"
-              />
-              <h3 class="text-lg font-semibold text-gray-600 dark:text-gray-300 mb-2">
-                No digest blocks yet
-              </h3>
-              <p class="text-gray-400 dark:text-gray-500">
-                Click "Add Block" above to build your daily digest
-              </p>
-            </div>
-          <% else %>
-            <div
-              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
-              id="block-list"
-            >
-              <%= for block <- @blocks do %>
-                <%= if @editing_block_id == block.id do %>
-                  <div
-                    class="rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20 p-5 col-span-full"
-                    id={"manage-block-#{block.id}"}
-                  >
-                    <div class="space-y-3">
-                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                            Type
-                          </label>
-                          <select
-                            phx-change="update_edit_type"
-                            name="type"
-                            id={"edit-type-#{block.id}"}
-                            class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
-                          >
-                            <option value="weather" selected={@edit_type == "weather"}>
-                              ☀️ Weather
-                            </option>
-                            <option value="news" selected={@edit_type == "news"}>📰 News</option>
-                            <option value="interest" selected={@edit_type == "interest"}>
-                              ✨ Interest
-                            </option>
-                            <option value="competitor" selected={@edit_type == "competitor"}>
-                              🏢 Competitor
-                            </option>
-                            <option value="stock" selected={@edit_type == "stock"}>📈 Stock</option>
-                            <option value="agenda" selected={@edit_type == "agenda"}>📅 Agenda</option>
-                            <option value="habit" selected={@edit_type == "habit"}>✅ Habit</option>
-                            <option value="custom" selected={@edit_type == "custom"}>🧩 Custom</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-                            Label
-                          </label>
-                          <input
-                            type="text"
-                            value={@edit_label}
-                            phx-keyup="update_edit_label"
-                            phx-key=""
-                            name="label"
-                            id={"edit-label-#{block.id}"}
-                            class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
-                          />
-                        </div>
+                <%!-- Digest Blocks --%>
+                <div class="p-2 flex-1 space-y-1.5 overflow-y-auto" id={"day-blocks-#{day}"}>
+                  <%= if is_disabled do %>
+                    <div class="flex flex-col items-center justify-center h-full text-gray-300 dark:text-gray-600">
+                      <.icon name="hero-no-symbol" class="w-6 h-6 mb-1 opacity-40" />
+                      <p class="text-[10px]">Day off</p>
+                    </div>
+                  <% else %>
+                    <%= if @blocks == [] do %>
+                      <div class="flex flex-col items-center justify-center h-full text-gray-300 dark:text-gray-600">
+                        <.icon name="hero-inbox" class="w-6 h-6 mb-1 opacity-40" />
+                        <p class="text-[10px]">No blocks</p>
                       </div>
-                      <div>
-                        <div class="flex items-center justify-between mb-1">
-                          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">
-                            Config
-                          </label>
-                          <button
-                            phx-click="add_edit_config_row"
-                            type="button"
-                            class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400"
-                            id={"add-edit-config-row-#{block.id}"}
-                          >
-                            + Add field
-                          </button>
-                        </div>
-                        <%= for {row, idx} <- Enum.with_index(@edit_config_rows) do %>
-                          <div
-                            class="flex items-center gap-2 mb-2"
-                            id={"edit-config-row-#{block.id}-#{idx}"}
-                          >
-                            <input
-                              type="text"
-                              value={row.key}
-                              phx-keyup="update_edit_config_key"
-                              phx-value-index={idx}
-                              phx-key=""
-                              placeholder="key"
-                              id={"edit-config-key-#{block.id}-#{idx}"}
-                              class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
-                            />
-                            <input
-                              type="text"
-                              value={row.value}
-                              phx-keyup="update_edit_config_value"
-                              phx-value-index={idx}
-                              phx-key=""
-                              placeholder="value"
-                              id={"edit-config-val-#{block.id}-#{idx}"}
-                              class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
-                            />
-                            <button
-                              phx-click="remove_edit_config_row"
-                              phx-value-index={idx}
-                              type="button"
-                              class="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                              id={"remove-edit-config-#{block.id}-#{idx}"}
+                    <% else %>
+                      <%= for block <- @blocks do %>
+                        <% is_block_active = block_active_on_day?(block, day) %>
+                        <button
+                          phx-click="toggle_block_day"
+                          phx-value-block-id={block.id}
+                          phx-value-day={Date.day_of_week(day)}
+                          class={[
+                            "flex items-center gap-2 p-2 rounded-lg border w-full text-left",
+                            "transition-all duration-200 group/block cursor-pointer",
+                            if(is_block_active,
+                              do: ["hover:shadow-sm", type_bg(block.type)],
+                              else:
+                                "bg-gray-50 border-gray-200 opacity-40 hover:opacity-60 dark:bg-gray-800 dark:border-gray-700"
+                            )
+                          ]}
+                          id={"block-#{block.id}-#{day}"}
+                        >
+                          <div class={[
+                            "shrink-0",
+                            if(is_block_active,
+                              do: type_icon_color(block.type),
+                              else: "text-gray-400"
+                            )
+                          ]}>
+                            <.icon name={type_icon(block.type)} class="w-4 h-4" />
+                          </div>
+                          <span class={[
+                            "text-xs font-medium truncate flex-1",
+                            if(is_block_active,
+                              do: type_label_color(block.type),
+                              else: "text-gray-400 line-through"
+                            )
+                          ]}>
+                            {block.label}
+                          </span>
+                        </button>
+                      <% end %>
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <%!-- Block Management --%>
+          <div class="mt-8" id="block-management">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Digest Blocks</h2>
+              <button
+                phx-click="toggle_add_form"
+                class={[
+                  "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium",
+                  "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
+                  "hover:bg-indigo-100 hover:border-indigo-300 dark:hover:bg-indigo-900/50 dark:hover:border-indigo-700",
+                  "transition-all duration-200"
+                ]}
+                id="toggle-add-form-btn"
+              >
+                <.icon
+                  name={if(@show_add_form, do: "hero-x-mark", else: "hero-plus")}
+                  class="w-4 h-4"
+                />
+                {if @show_add_form, do: "Cancel", else: "Add Block"}
+              </button>
+            </div>
+
+            <%= if @show_add_form do %>
+              <div
+                class="mb-6 p-5 rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20"
+                id="add-block-form"
+              >
+                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">New Block</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Type
+                    </label>
+                    <select
+                      phx-change="update_add_type"
+                      name="type"
+                      id="add-block-type"
+                      class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
+                    >
+                      <option value="weather" selected={@add_type == "weather"}>☀️ Weather</option>
+                      <option value="news" selected={@add_type == "news"}>📰 News</option>
+                      <option value="interest" selected={@add_type == "interest"}>✨ Interest</option>
+                      <option value="competitor" selected={@add_type == "competitor"}>
+                        🏢 Competitor
+                      </option>
+                      <option value="stock" selected={@add_type == "stock"}>📈 Stock</option>
+                      <option value="agenda" selected={@add_type == "agenda"}>📅 Agenda</option>
+                      <option value="habit" selected={@add_type == "habit"}>✅ Habit</option>
+                      <option value="custom" selected={@add_type == "custom"}>🧩 Custom</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                      Label
+                    </label>
+                    <input
+                      type="text"
+                      value={@add_label}
+                      phx-keyup="update_add_label"
+                      phx-key=""
+                      name="label"
+                      id="add-block-label"
+                      placeholder="e.g. Amsterdam Weather"
+                      class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
+                    />
+                  </div>
+                </div>
+                <%!-- Config Key/Value Rows --%>
+                <div class="mt-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                      Config <span class="text-gray-400 dark:text-gray-500">(optional)</span>
+                    </label>
+                    <button
+                      phx-click="add_config_row"
+                      type="button"
+                      class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400 dark:hover:text-indigo-300"
+                      id="add-config-row-btn"
+                    >
+                      + Add field
+                    </button>
+                  </div>
+                  <%= for {row, idx} <- Enum.with_index(@add_config_rows) do %>
+                    <div class="flex items-center gap-2 mb-2" id={"add-config-row-#{idx}"}>
+                      <input
+                        type="text"
+                        value={row.key}
+                        phx-keyup="update_add_config_key"
+                        phx-value-index={idx}
+                        phx-key=""
+                        placeholder="key"
+                        id={"add-config-key-#{idx}"}
+                        class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
+                      />
+                      <input
+                        type="text"
+                        value={row.value}
+                        phx-keyup="update_add_config_value"
+                        phx-value-index={idx}
+                        phx-key=""
+                        placeholder="value"
+                        id={"add-config-val-#{idx}"}
+                        class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
+                      />
+                      <button
+                        phx-click="remove_add_config_row"
+                        phx-value-index={idx}
+                        type="button"
+                        class="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        id={"remove-add-config-#{idx}"}
+                      >
+                        <.icon name="hero-x-mark" class="w-4 h-4" />
+                      </button>
+                    </div>
+                  <% end %>
+                </div>
+                <div class="mt-4 flex justify-end">
+                  <button
+                    phx-click="add_block"
+                    disabled={@add_label == ""}
+                    class={[
+                      "inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                      if(@add_label == "",
+                        do:
+                          "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500",
+                        else:
+                          "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                      )
+                    ]}
+                    id="submit-add-block-btn"
+                  >
+                    <.icon name="hero-plus" class="w-4 h-4" /> Add
+                  </button>
+                </div>
+              </div>
+            <% end %>
+
+            <%= if @blocks == [] do %>
+              <div
+                class="text-center py-12 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700"
+                id="empty-state"
+              >
+                <.icon
+                  name="hero-inbox"
+                  class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4"
+                />
+                <h3 class="text-lg font-semibold text-gray-600 dark:text-gray-300 mb-2">
+                  No digest blocks yet
+                </h3>
+                <p class="text-gray-400 dark:text-gray-500">
+                  Click "Add Block" above to build your daily digest
+                </p>
+              </div>
+            <% else %>
+              <div
+                class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
+                id="block-list"
+              >
+                <%= for block <- @blocks do %>
+                  <%= if @editing_block_id == block.id do %>
+                    <div
+                      class="rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20 p-5 col-span-full"
+                      id={"manage-block-#{block.id}"}
+                    >
+                      <div class="space-y-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                              Type
+                            </label>
+                            <select
+                              phx-change="update_edit_type"
+                              name="type"
+                              id={"edit-type-#{block.id}"}
+                              class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
                             >
-                              <.icon name="hero-x-mark" class="w-4 h-4" />
+                              <option value="weather" selected={@edit_type == "weather"}>
+                                ☀️ Weather
+                              </option>
+                              <option value="news" selected={@edit_type == "news"}>📰 News</option>
+                              <option value="interest" selected={@edit_type == "interest"}>
+                                ✨ Interest
+                              </option>
+                              <option value="competitor" selected={@edit_type == "competitor"}>
+                                🏢 Competitor
+                              </option>
+                              <option value="stock" selected={@edit_type == "stock"}>📈 Stock</option>
+                              <option value="agenda" selected={@edit_type == "agenda"}>
+                                📅 Agenda
+                              </option>
+                              <option value="habit" selected={@edit_type == "habit"}>✅ Habit</option>
+                              <option value="custom" selected={@edit_type == "custom"}>
+                                🧩 Custom
+                              </option>
+                            </select>
+                          </div>
+                          <div>
+                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                              Label
+                            </label>
+                            <input
+                              type="text"
+                              value={@edit_label}
+                              phx-keyup="update_edit_label"
+                              phx-key=""
+                              name="label"
+                              id={"edit-label-#{block.id}"}
+                              class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <div class="flex items-center justify-between mb-1">
+                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">
+                              Config
+                            </label>
+                            <button
+                              phx-click="add_edit_config_row"
+                              type="button"
+                              class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400"
+                              id={"add-edit-config-row-#{block.id}"}
+                            >
+                              + Add field
                             </button>
                           </div>
-                        <% end %>
-                      </div>
-                      <div class="flex gap-2 justify-end">
-                        <button
-                          phx-click="cancel_edit"
-                          class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
-                          id={"cancel-edit-#{block.id}"}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          phx-click="save_edit"
-                          class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all dark:bg-indigo-500 dark:hover:bg-indigo-600"
-                          id={"save-edit-#{block.id}"}
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                <% else %>
-                  <div
-                    class={["rounded-xl border p-4 transition-all duration-200", type_bg(block.type)]}
-                    id={"manage-block-#{block.id}"}
-                  >
-                    <div class="flex items-start gap-3">
-                      <div class={["shrink-0 mt-0.5", type_icon_color(block.type)]}>
-                        <.icon name={type_icon(block.type)} class="w-5 h-5" />
-                      </div>
-                      <div class="flex-1 min-w-0">
-                        <p class={["font-medium text-sm truncate", type_label_color(block.type)]}>
-                          {block.label}
-                        </p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">
-                          {block.type}
-                        </p>
-                        <%= if block.config && block.config != %{} do %>
-                          <div class="mt-1.5 flex flex-wrap gap-1">
-                            <%= for {k, v} <- block.config do %>
-                              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                                {k}: {v}
-                              </span>
-                            <% end %>
-                          </div>
-                        <% end %>
-                      </div>
-                      <div class="flex items-center gap-1 shrink-0">
-                        <button
-                          phx-click="start_edit"
-                          phx-value-block-id={block.id}
-                          class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all dark:hover:text-indigo-400 dark:hover:bg-indigo-950/40"
-                          id={"edit-btn-#{block.id}"}
-                        >
-                          <.icon name="hero-pencil-square" class="w-4 h-4" />
-                        </button>
-                        <button
-                          phx-click="delete_block"
-                          phx-value-block-id={block.id}
-                          data-confirm="Remove this block from your digest?"
-                          class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all dark:hover:text-red-400 dark:hover:bg-red-950/40"
-                          id={"delete-btn-#{block.id}"}
-                        >
-                          <.icon name="hero-trash" class="w-4 h-4" />
-                        </button>
+                          <%= for {row, idx} <- Enum.with_index(@edit_config_rows) do %>
+                            <div
+                              class="flex items-center gap-2 mb-2"
+                              id={"edit-config-row-#{block.id}-#{idx}"}
+                            >
+                              <input
+                                type="text"
+                                value={row.key}
+                                phx-keyup="update_edit_config_key"
+                                phx-value-index={idx}
+                                phx-key=""
+                                placeholder="key"
+                                id={"edit-config-key-#{block.id}-#{idx}"}
+                                class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
+                              />
+                              <input
+                                type="text"
+                                value={row.value}
+                                phx-keyup="update_edit_config_value"
+                                phx-value-index={idx}
+                                phx-key=""
+                                placeholder="value"
+                                id={"edit-config-val-#{block.id}-#{idx}"}
+                                class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
+                              />
+                              <button
+                                phx-click="remove_edit_config_row"
+                                phx-value-index={idx}
+                                type="button"
+                                class="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                id={"remove-edit-config-#{block.id}-#{idx}"}
+                              >
+                                <.icon name="hero-x-mark" class="w-4 h-4" />
+                              </button>
+                            </div>
+                          <% end %>
+                        </div>
+                        <div class="flex gap-2 justify-end">
+                          <button
+                            phx-click="cancel_edit"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                            id={"cancel-edit-#{block.id}"}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            phx-click="save_edit"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                            id={"save-edit-#{block.id}"}
+                          >
+                            Save
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  <% else %>
+                    <div
+                      class={[
+                        "rounded-xl border p-4 transition-all duration-200",
+                        type_bg(block.type)
+                      ]}
+                      id={"manage-block-#{block.id}"}
+                    >
+                      <div class="flex items-start gap-3">
+                        <div class={["shrink-0 mt-0.5", type_icon_color(block.type)]}>
+                          <.icon name={type_icon(block.type)} class="w-5 h-5" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class={["font-medium text-sm truncate", type_label_color(block.type)]}>
+                            {block.label}
+                          </p>
+                          <p class="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">
+                            {block.type}
+                          </p>
+                          <%= if block.config && block.config != %{} do %>
+                            <div class="mt-1.5 flex flex-wrap gap-1">
+                              <%= for {k, v} <- block.config do %>
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                                  {k}: {v}
+                                </span>
+                              <% end %>
+                            </div>
+                          <% end %>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                          <button
+                            phx-click="start_edit"
+                            phx-value-block-id={block.id}
+                            class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all dark:hover:text-indigo-400 dark:hover:bg-indigo-950/40"
+                            id={"edit-btn-#{block.id}"}
+                          >
+                            <.icon name="hero-pencil-square" class="w-4 h-4" />
+                          </button>
+                          <button
+                            phx-click="delete_block"
+                            phx-value-block-id={block.id}
+                            data-confirm="Remove this block from your digest?"
+                            class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all dark:hover:text-red-400 dark:hover:bg-red-950/40"
+                            id={"delete-btn-#{block.id}"}
+                          >
+                            <.icon name="hero-trash" class="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
                 <% end %>
-              <% end %>
-            </div>
-          <% end %>
-        </div>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
 
         <%!-- Floating Voice Assistant --%>
         <div id="voice-assistant-container">
@@ -1250,12 +1316,14 @@ defmodule CheckDayWeb.DashboardLive do
             <button
               phx-click="toggle_voice_panel"
               class={[
-                "fixed bottom-8 right-8 z-50 w-16 h-16 rounded-full flex items-center justify-center",
+                "fixed bottom-8 right-8 z-50 w-16 h-16 rounded-full flex items-center justify-center cursor-pointer",
                 "bg-gradient-to-br from-indigo-500 to-purple-600 text-white",
                 "hover:from-indigo-600 hover:to-purple-700 hover:scale-110",
                 "transition-all duration-300 shadow-xl shadow-indigo-300/40 dark:shadow-indigo-900/40",
                 "focus:outline-none focus:ring-4 focus:ring-indigo-200 dark:focus:ring-indigo-800",
-                "group"
+                "group",
+                @needs_onboarding &&
+                  "ring-4 ring-indigo-300 ring-offset-2 dark:ring-indigo-700 dark:ring-offset-gray-900 animate-pulse"
               ]}
               id="voice-fab-btn"
             >
@@ -1313,7 +1381,7 @@ defmodule CheckDayWeb.DashboardLive do
                   <button
                     phx-click="start_conversation"
                     class={[
-                      "w-20 h-20 rounded-full flex items-center justify-center",
+                      "w-20 h-20 rounded-full flex items-center justify-center cursor-pointer",
                       "bg-gradient-to-br from-indigo-500 to-purple-600 text-white",
                       "hover:from-indigo-600 hover:to-purple-700 hover:scale-105",
                       "transition-all duration-200 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30",
@@ -1327,7 +1395,7 @@ defmodule CheckDayWeb.DashboardLive do
                   <button
                     phx-click="end_conversation"
                     class={[
-                      "w-20 h-20 rounded-full flex items-center justify-center",
+                      "w-20 h-20 rounded-full flex items-center justify-center cursor-pointer",
                       "bg-gradient-to-br from-red-500 to-rose-600 text-white",
                       "hover:from-red-600 hover:to-rose-700 hover:scale-105",
                       "transition-all duration-200 shadow-lg shadow-red-200 dark:shadow-red-900/30",
@@ -1409,7 +1477,7 @@ defmodule CheckDayWeb.DashboardLive do
         mounted() {
           this.conversation = null;
 
-          this.handleEvent("start_conversation", async ({ signed_url, user_id, existing_blocks, first_name, digest_time }) => {
+          this.handleEvent("start_conversation", async ({ signed_url, user_id, existing_blocks, first_name, digest_time, active_days, skipped_dates }) => {
             try {
               await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -1419,7 +1487,9 @@ defmodule CheckDayWeb.DashboardLive do
                   user_id: user_id,
                   existing_blocks: existing_blocks,
                   first_name: first_name,
-                  digest_time: digest_time
+                  digest_time: digest_time,
+                  active_days: active_days,
+                  skipped_dates: skipped_dates
                 },
                 onMessage: (props) => {
                   if (this.el.isConnected) {

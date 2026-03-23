@@ -64,32 +64,6 @@ defmodule CheckDayWeb.DigestBlockController do
   end
 
   @doc """
-  Called by ElevenLabs Server Tool: complete_onboarding
-  Expects: user_id
-  """
-  def complete_onboarding(conn, params) do
-    with :ok <- verify_api_token(conn),
-         {:ok, user} <- fetch_user(params),
-         {:ok, _user} <- mark_onboarding_complete(user) do
-      broadcast_update(user.id, :onboarding_completed)
-
-      json(conn, %{
-        success: true,
-        message: "Onboarding complete! Your daily digest is ready."
-      })
-    else
-      {:error, :unauthorized} ->
-        conn |> put_status(401) |> json(%{error: "Unauthorized"})
-
-      {:error, :user_not_found} ->
-        conn |> put_status(404) |> json(%{error: "User not found"})
-
-      {:error, reason} ->
-        conn |> put_status(422) |> json(%{error: inspect(reason)})
-    end
-  end
-
-  @doc """
   Called by ElevenLabs Server Tool: set_digest_time
   Expects: user_id, time (HH:MM format), optional day (1-7, omit to set all days)
   """
@@ -114,6 +88,40 @@ defmodule CheckDayWeb.DigestBlockController do
 
       {:error, :invalid_time} ->
         conn |> put_status(422) |> json(%{error: "Invalid time format. Use HH:MM"})
+
+      {:error, reason} ->
+        conn |> put_status(422) |> json(%{error: inspect(reason)})
+    end
+  end
+
+  @doc """
+  Called by ElevenLabs Server Tool: toggle_day_availability
+  Expects: user_id, mode ("skip_date" or "toggle_weekly_day")
+  For skip_date mode: date (ISO 8601, e.g. "2026-03-25")
+  For toggle_weekly_day mode: day (1-7, Mon-Sun)
+  """
+  def toggle_day(conn, params) do
+    with :ok <- verify_api_token(conn),
+         {:ok, user} <- fetch_user(params),
+         {:ok, result} <- apply_day_toggle(user, params) do
+      json(conn, result)
+    else
+      {:error, :unauthorized} ->
+        conn |> put_status(401) |> json(%{error: "Unauthorized"})
+
+      {:error, :user_not_found} ->
+        conn |> put_status(404) |> json(%{error: "User not found"})
+
+      {:error, :invalid_mode} ->
+        conn
+        |> put_status(422)
+        |> json(%{error: "Invalid mode. Use 'skip_date' or 'toggle_weekly_day'"})
+
+      {:error, :invalid_date} ->
+        conn |> put_status(422) |> json(%{error: "Invalid date format. Use YYYY-MM-DD"})
+
+      {:error, :missing_day} ->
+        conn |> put_status(422) |> json(%{error: "Missing 'day' parameter (1-7)"})
 
       {:error, reason} ->
         conn |> put_status(422) |> json(%{error: inspect(reason)})
@@ -195,10 +203,6 @@ defmodule CheckDayWeb.DigestBlockController do
     end
   end
 
-  defp mark_onboarding_complete(user) do
-    Ash.update(user, %{onboarding_completed: true}, action: :update_profile, authorize?: false)
-  end
-
   defp parse_time_string(%{"time" => time_str}) when is_binary(time_str) do
     time_str = String.trim(time_str)
     # Validate the time format
@@ -250,6 +254,94 @@ defmodule CheckDayWeb.DigestBlockController do
       {:digest_update, message}
     )
   end
+
+  defp apply_day_toggle(user, %{"mode" => "skip_date", "date" => date_str})
+       when is_binary(date_str) do
+    case Date.from_iso8601(date_str) do
+      {:ok, date} ->
+        current = user.skipped_dates || []
+
+        new_skipped =
+          if date in current do
+            List.delete(current, date)
+          else
+            [date | current]
+          end
+
+        action = if date in current, do: "unskipped", else: "skipped"
+
+        case Ash.update(user, %{skipped_dates: new_skipped},
+               action: :update_profile,
+               authorize?: false
+             ) do
+          {:ok, _} ->
+            broadcast_update(user.id, {:skipped_dates_changed, new_skipped})
+
+            {:ok,
+             %{
+               success: true,
+               message: "Date #{date_str} has been #{action}.",
+               action: action,
+               date: date_str
+             }}
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:error, _} ->
+        {:error, :invalid_date}
+    end
+  end
+
+  defp apply_day_toggle(user, %{"mode" => "toggle_weekly_day", "day" => day_str})
+       when is_binary(day_str) do
+    day_num = String.to_integer(day_str)
+    current_days = user.active_days || [1, 2, 3, 4, 5, 6, 7]
+
+    new_days =
+      if day_num in current_days do
+        List.delete(current_days, day_num)
+      else
+        Enum.sort([day_num | current_days])
+      end
+
+    action = if day_num in current_days, do: "disabled", else: "enabled"
+    day_name = day_of_week_name(day_num)
+
+    case Ash.update(user, %{active_days: new_days},
+           action: :update_profile,
+           authorize?: false
+         ) do
+      {:ok, _} ->
+        broadcast_update(user.id, {:active_days_changed, new_days})
+
+        {:ok,
+         %{
+           success: true,
+           message: "#{day_name} has been #{action} every week.",
+           action: action,
+           day: day_num,
+           day_name: day_name
+         }}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp apply_day_toggle(_user, %{"mode" => "toggle_weekly_day"}), do: {:error, :missing_day}
+  defp apply_day_toggle(_user, %{"mode" => "skip_date"}), do: {:error, :invalid_date}
+  defp apply_day_toggle(_user, _), do: {:error, :invalid_mode}
+
+  defp day_of_week_name(1), do: "Monday"
+  defp day_of_week_name(2), do: "Tuesday"
+  defp day_of_week_name(3), do: "Wednesday"
+  defp day_of_week_name(4), do: "Thursday"
+  defp day_of_week_name(5), do: "Friday"
+  defp day_of_week_name(6), do: "Saturday"
+  defp day_of_week_name(7), do: "Sunday"
+  defp day_of_week_name(_), do: "Unknown"
 
   defp format_errors(%Ash.Error.Invalid{} = error) do
     error
