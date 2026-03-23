@@ -105,27 +105,16 @@
 
 /* This file is for your main application CSS */
 
-/* Style the dot in "Check.Day" on the sign-in banner to be orange */
-.flex.flex-col.items-center.justify-center.py-6 > div {
-  font-size: 0;
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-}
-.flex.flex-col.items-center.justify-center.py-6 > div::before {
-  content: "Check";
-  font-size: 1.5rem;
-  line-height: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-}
-.flex.flex-col.items-center.justify-center.py-6 > div::after {
-  content: ".Day";
-  font-size: 1.5rem;
-  line-height: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  color: oklch(70% 0.213 47.604);
+/* Fade-in animation for sign-in card */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Slide-in animation for digest blocks */

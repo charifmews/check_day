@@ -51,32 +51,26 @@ defmodule CheckDayWeb.Router do
     auth_routes AuthController, CheckDay.Accounts.User, path: "/auth"
     sign_out_route AuthController
 
-    # Remove these if you'd like to use your own authentication views
-    sign_in_route register_path: "/register",
-                  reset_path: "/reset",
-                  auth_routes_prefix: "/auth",
-                  on_mount: [{CheckDayWeb.LiveUserAuth, :live_no_user}],
-                  overrides: [
-                    CheckDayWeb.AuthOverrides,
-                    Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
-                  ]
+    # Custom sign-in page
+    ash_authentication_live_session :sign_in_route,
+      on_mount: [{CheckDayWeb.LiveUserAuth, :live_no_user}] do
+      live "/sign-in", SignInLive
+    end
 
-    # Remove this if you do not want to use the reset password feature
-    reset_route auth_routes_prefix: "/auth",
-                overrides: [
-                  CheckDayWeb.AuthOverrides,
-                  Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI
-                ]
+    # Redirect /register to /sign-in (unified page)
+    get "/register", PageController, :register_redirect
+
+    # Remove these if you do not want to use the reset password feature
+    reset_route auth_routes_prefix: "/auth"
 
     # Remove this if you do not use the confirmation strategy
     confirm_route CheckDay.Accounts.User, :confirm_new_user,
-      auth_routes_prefix: "/auth",
-      overrides: [CheckDayWeb.AuthOverrides, Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI]
+      auth_routes_prefix: "/auth"
 
     # Remove this if you do not use the magic link strategy.
     magic_sign_in_route(CheckDay.Accounts.User, :magic_link,
       auth_routes_prefix: "/auth",
-      overrides: [CheckDayWeb.AuthOverrides, Elixir.AshAuthentication.Phoenix.Overrides.DaisyUI]
+      live_view: CheckDayWeb.MagicSignInLive
     )
   end
 
