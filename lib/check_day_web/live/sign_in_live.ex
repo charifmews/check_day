@@ -153,9 +153,28 @@ defmodule CheckDayWeb.SignInLive do
               <p class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-6">
                 {@submitted_email}
               </p>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mb-6">
+              <p class="text-xs text-gray-400 dark:text-gray-500 mb-4">
                 Click the link in the email to sign in. It may take a minute to arrive.
               </p>
+
+              <div class={[
+                "rounded-xl p-4 mb-6 text-left",
+                "bg-amber-50 border border-amber-200",
+                "dark:bg-amber-950/30 dark:border-amber-800/50"
+              ]} id="spam-warning">
+                <div class="flex gap-2.5">
+                  <.icon name="hero-exclamation-triangle" class="w-4 h-4 text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p class="text-xs font-medium text-amber-800 dark:text-amber-300 mb-1">
+                      Can't find the email?
+                    </p>
+                    <p class="text-xs text-amber-700 dark:text-amber-400/80 leading-relaxed">
+                      Check your spam or junk folder. If you find it there,
+                      please mark it as "not spam" first, then click the sign-in link.
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               <button
                 phx-click="back_to_form"
