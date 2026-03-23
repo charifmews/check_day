@@ -41,6 +41,7 @@ defmodule CheckDay.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:oban_web, "~> 2.0"},
       {:ash_postgres, "~> 2.0"},
       {:picosat_elixir, "~> 0.2"},
       {:sourceror, "~> 1.8", only: [:dev, :test]},
@@ -79,7 +80,8 @@ defmodule CheckDay.MixProject do
       {:eleven_labs, "~> 0.1.0"},
       {:oban, "~> 2.18"},
       {:oban_live_dashboard, "~> 0.2"},
-      {:req_llm, "~> 1.8"}
+      {:req_llm, "~> 1.8"},
+      {:tz, "~> 0.28"}
     ]
   end
 

@@ -1,6 +1,7 @@
 defmodule CheckDayWeb.Router do
   use CheckDayWeb, :router
 
+  import Oban.Web.Router
   use AshAuthentication.Phoenix.Router
 
   import AshAuthentication.Plug.Helpers
@@ -107,6 +108,12 @@ defmodule CheckDayWeb.Router do
         additional_pages: [oban: Oban.LiveDashboard]
 
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
+
+    scope "/" do
+      pipe_through :browser
+
+      oban_dashboard("/oban")
     end
   end
 end

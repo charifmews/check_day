@@ -134,8 +134,8 @@ if config_env() == :prod do
       System.get_env("ELEVENLABS_API_KEY") ||
         raise("Missing environment variable `ELEVENLABS_API_KEY`!")
 
-  config :req_llm, :openrouter,
-    api_key:
+  config :req_llm,
+    openrouter_api_key:
       System.get_env("OPENROUTER_API_KEY") ||
         raise("Missing environment variable `OPENROUTER_API_KEY`!")
 

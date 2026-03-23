@@ -1,5 +1,6 @@
 [
   import_deps: [
+    :oban,
     :ash_postgres,
     :ash_authentication_phoenix,
     :ash_authentication,

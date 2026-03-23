@@ -7,6 +7,8 @@
 # General application configuration
 import Config
 
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+
 config :ash,
   allow_forbidden_field_for_relationships_by_default?: true,
   include_embedded_source_by_default?: false,
@@ -56,7 +58,13 @@ config :check_day,
 
 config :check_day, Oban,
   repo: CheckDay.Repo,
-  queues: [default: 10]
+  queues: [default: 10, digests: 5],
+  plugins: [
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"* * * * *", CheckDay.Workers.DigestScheduler}
+     ]}
+  ]
 
 # Configure the endpoint
 config :check_day, CheckDayWeb.Endpoint,
