@@ -13,18 +13,18 @@ defmodule CheckDay.Digests.ContentFetcher do
   Returns `{:ok, results}` where results is a list of maps with
   `:headline`, `:digest_summary`, and `:sources` (list of `{url, domain}` tuples).
   """
-  def fetch(block) do
-    route_firecrawl_strategy(block)
+  def fetch(block, previous_context \\ nil) do
+    route_firecrawl_strategy(block, previous_context)
   end
 
   @doc """
   Concurrently fetches content for a list of blocks and filters out failures.
   """
-  def fetch_all(blocks) do
+  def fetch_all(blocks, previous_blocks_data \\ %{}) do
     blocks
     |> Task.async_stream(
       fn block ->
-        case fetch(block) do
+        case fetch(block, Map.get(previous_blocks_data, block.id)) do
           {:ok, results} -> {block, results}
           {:error, reason} ->
             Logger.warning("Failed to fetch content for block #{block.id}: #{inspect(reason)}")
@@ -43,31 +43,31 @@ defmodule CheckDay.Digests.ContentFetcher do
     |> Enum.reject(&is_nil/1)
   end
 
-  defp route_firecrawl_strategy(%{type: t} = block) when t in [:news, :interest] do
-    fetch_via_hub_crawler(block)
+  defp route_firecrawl_strategy(%{type: t} = block, previous_context) when t in [:news, :interest] do
+    fetch_via_hub_crawler(block, previous_context)
   end
 
-  defp route_firecrawl_strategy(%{type: :weather} = block) do
-    fetch_via_weather_api(block)
+  defp route_firecrawl_strategy(%{type: :weather} = block, previous_context) do
+    fetch_via_weather_api(block, previous_context)
   end
 
-  defp route_firecrawl_strategy(%{type: :competitor} = block) do
-    fetch_via_competitor_crawler(block)
+  defp route_firecrawl_strategy(%{type: :competitor} = block, previous_context) do
+    fetch_via_competitor_crawler(block, previous_context)
   end
 
-  defp route_firecrawl_strategy(%{type: :stock} = block) do
-    fetch_via_stock_api(block)
+  defp route_firecrawl_strategy(%{type: :stock} = block, previous_context) do
+    fetch_via_stock_api(block, previous_context)
   end
 
-  defp route_firecrawl_strategy(block) do
-    fetch_via_basic_search(block)
+  defp route_firecrawl_strategy(block, previous_context) do
+    fetch_via_basic_search(block, previous_context)
   end
 
   # ===========================================================================
   # STRATEGY: LEGACY BASIC SEARCH (For :weather, :stock, :competitor, :custom)
   # ===========================================================================
 
-  defp fetch_via_basic_search(block) do
+  defp fetch_via_basic_search(block, _previous_context) do
     query = build_query(block)
 
     case Firecrawl.search_and_scrape(
@@ -103,7 +103,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     summary: Zoi.string(description: "The concise 1-3 sentence markdown summary.")
   })
 
-  defp fetch_via_weather_api(block) do
+  defp fetch_via_weather_api(block, _previous_context) do
     location = block.config["location"] || block.label
     Logger.info("Weather API initiated for location: #{location}")
 
@@ -177,7 +177,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     source_urls: Zoi.list(Zoi.string(), description: "A list of the raw news URLs used as sources.")
   })
 
-  defp fetch_via_stock_api(block) do
+  defp fetch_via_stock_api(block, _previous_context) do
     config = block.config || %{}
     company = config["company_name"] || block.label
     symbol = config["symbol"] || block.label
@@ -266,7 +266,8 @@ defmodule CheckDay.Digests.ContentFetcher do
     source_urls: Zoi.list(Zoi.string(), description: "A list of strings of the raw URLs used as sources.")
   })
 
-  defp fetch_via_hub_crawler(block) do
+  defp fetch_via_hub_crawler(block, previous_context) do
+    delta_str = delta_instruction(previous_context)
     topic = block_topic(block)
     Logger.info("Advanced Hub Crawler initiated for topic: #{topic}")
 
@@ -305,7 +306,7 @@ defmodule CheckDay.Digests.ContentFetcher do
                ) do
             {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} ->
               if markdown && markdown != "" do
-                extracted = extract_hub(url, markdown, topic)
+                extracted = extract_hub(url, markdown, topic, delta_str)
                 has_discussions = case extracted[:discussions] || extracted["discussions"] do
                   list when is_list(list) and length(list) > 0 -> true
                   _ -> false
@@ -337,10 +338,11 @@ defmodule CheckDay.Digests.ContentFetcher do
     end
   end
 
-  defp extract_hub(url, markdown, topic) do
+  defp extract_hub(url, markdown, topic, delta_str) do
     current_date = DateTime.utc_now() |> Calendar.strftime("%Y-%m-%d %H:%M:%S UTC")
 
     prompt = """
+    #{delta_str}
     You are reading an index page (forum, news aggregator, or blog) related to #{topic}.
     The base URL is: #{url}. Use this to convert relative links to absolute links.
     Today's current date and time is: #{current_date}.
@@ -431,7 +433,8 @@ defmodule CheckDay.Digests.ContentFetcher do
     source_urls: Zoi.list(Zoi.string(), description: "A list of strings of the raw URLs used as sources.")
   })
 
-  defp fetch_via_competitor_crawler(block) do
+  defp fetch_via_competitor_crawler(block, previous_context) do
+    delta_str = delta_instruction(previous_context)
     config = block.config || %{}
     company_name = config["company_name"] || block.label
     domain = config["domain"] || company_name
@@ -468,7 +471,7 @@ defmodule CheckDay.Digests.ContentFetcher do
                ) do
             {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} ->
               if markdown && markdown != "" do
-                extracted = extract_competitor(url, markdown, company_name)
+                extracted = extract_competitor(url, markdown, company_name, delta_str)
                 has_announcements = case extracted[:announcements] || extracted["announcements"] do
                   list when is_list(list) and length(list) > 0 -> true
                   _ -> false
@@ -499,10 +502,11 @@ defmodule CheckDay.Digests.ContentFetcher do
     end
   end
 
-  defp extract_competitor(url, markdown, company_name) do
+  defp extract_competitor(url, markdown, company_name, delta_str) do
     current_date = DateTime.utc_now() |> Calendar.strftime("%Y-%m-%d %H:%M:%S UTC")
 
     prompt = """
+    #{delta_str}
     You are reading an official index page (blog, changelog, newsroom) for the company: #{company_name}.
     The base URL is: #{url}. Use this to convert relative links to absolute links.
     Today's current date and time is: #{current_date}.
@@ -895,5 +899,9 @@ defmodule CheckDay.Digests.ContentFetcher do
       provider: :openrouter,
       id: "google/gemini-3-flash-preview"
     })
+  end
+  defp delta_instruction(nil), do: ""
+  defp delta_instruction(prev) do
+    "\n\nCRITICAL CONTEXT: Here is the data from exactly the last successful run: #{inspect(prev)}\nHighlight and focus exclusively on NEW developments that have happened since then!"
   end
 end

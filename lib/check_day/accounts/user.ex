@@ -125,17 +125,17 @@ defmodule CheckDay.Accounts.User do
     end
 
     attribute :active_days, {:array, :integer} do
-      default [1, 2, 3, 4, 5, 6, 7]
+      default fn -> [1, 2, 3, 4, 5, 6, 7] end
       public? true
     end
 
     attribute :skipped_dates, {:array, :date} do
-      default []
+      default fn -> [] end
       public? true
     end
 
     attribute :digest_times, :map do
-      default %{
+      default fn -> %{
         "1" => "07:00",
         "2" => "07:00",
         "3" => "07:00",
@@ -143,7 +143,7 @@ defmodule CheckDay.Accounts.User do
         "5" => "07:00",
         "6" => "07:00",
         "7" => "07:00"
-      }
+      } end
 
       public? true
     end

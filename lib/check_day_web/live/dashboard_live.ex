@@ -53,16 +53,26 @@ defmodule CheckDayWeb.DashboardLive do
     user = socket.assigns.current_user
     blocks = socket.assigns.blocks
 
-    socket =
-      socket
-      |> assign(:preview_modal_open, true)
-      |> assign_async(:preview_html, fn ->
-        sections = CheckDay.Digests.ContentFetcher.fetch_all(blocks)
-        html = CheckDay.Digests.DigestEmail.render_html(user, Date.utc_today(), sections)
-        {:ok, %{preview_html: html}}
-      end)
+    case Hammer.check_rate("preview_digest:#{user.id}", :timer.hours(24), 3) do
+      {:allow, _count} ->
+        socket =
+          socket
+          |> assign(:preview_modal_open, true)
+          |> assign(:preview_html, Phoenix.LiveView.AsyncResult.loading())
+          |> assign_async(:preview_html, fn ->
+            # Passing an empty {} context map for previews since they don't persist
+            sections = CheckDay.Digests.ContentFetcher.fetch_all(blocks, %{})
+            html = CheckDay.Digests.DigestEmail.render_html(user, Date.utc_today(), sections)
+            {:ok, %{preview_html: html}}
+          end)
 
-    {:noreply, socket}
+        {:noreply, socket}
+
+      {:deny, _limit} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "You have reached your limit of 3 previews per 24 hours.")}
+    end
   end
 
   def handle_event("close_preview", _params, socket) do
@@ -1592,7 +1602,7 @@ defmodule CheckDayWeb.DashboardLive do
                 </h3>
                 <p class="text-sm text-gray-500 mt-1">Rendered live exclusively for you.</p>
               </div>
-              <button phx-click="close_preview" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition transition-colors text-gray-500">
+              <button phx-click="close_preview" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition transition-colors text-gray-500 cursor-pointer">
                 <.icon name="hero-x-mark" class="w-6 h-6" />
               </button>
             </div>

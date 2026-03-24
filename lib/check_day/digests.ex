@@ -4,5 +4,6 @@ defmodule CheckDay.Digests do
 
   resources do
     resource CheckDay.Digests.DigestBlock
+    resource CheckDay.Digests.DigestRun
   end
 end

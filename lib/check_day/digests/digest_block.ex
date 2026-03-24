@@ -61,7 +61,7 @@ defmodule CheckDay.Digests.DigestBlock do
     end
 
     attribute :config, :map do
-      default %{}
+      default fn -> %{} end
       public? true
     end
 
@@ -76,7 +76,7 @@ defmodule CheckDay.Digests.DigestBlock do
     end
 
     attribute :active_days, {:array, :integer} do
-      default [1, 2, 3, 4, 5, 6, 7]
+      default fn -> [1, 2, 3, 4, 5, 6, 7] end
       public? true
     end
 

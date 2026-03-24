@@ -82,7 +82,8 @@ defmodule CheckDay.MixProject do
       {:oban_live_dashboard, "~> 0.2"},
       {:req_llm, "~> 1.8"},
       {:tz, "~> 0.28"},
-      {:earmark, "~> 1.4"}
+      {:earmark, "~> 1.4"},
+      {:hammer, "~> 6.1"}
     ]
   end
 
