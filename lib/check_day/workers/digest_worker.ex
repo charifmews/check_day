@@ -33,7 +33,7 @@ defmodule CheckDay.Workers.DigestWorker do
       Logger.info("No active blocks for user #{user_id} on #{date_str}, skipping digest")
       :ok
     else
-      sections = fetch_all_content(blocks)
+      sections = ContentFetcher.fetch_all(blocks)
       DigestEmail.build_and_send(user, date, sections)
 
       # TODO: Future — kick off podcast generation here
@@ -43,32 +43,5 @@ defmodule CheckDay.Workers.DigestWorker do
       Logger.info("Digest sent for user #{user_id} on #{date_str} (#{length(sections)} sections)")
       :ok
     end
-  end
-
-  defp fetch_all_content(blocks) do
-    blocks
-    |> Task.async_stream(
-      fn block ->
-        case ContentFetcher.fetch(block) do
-          {:ok, results} ->
-            {block, results}
-
-          {:error, reason} ->
-            Logger.warning("Failed to fetch content for block #{block.id}: #{inspect(reason)}")
-            {block, []}
-        end
-      end,
-      timeout: :infinity,
-      max_concurrency: 3
-    )
-    |> Enum.map(fn
-      {:ok, result} ->
-        result
-
-      {:exit, reason} ->
-        Logger.error("Content fetch task crashed: #{inspect(reason)}")
-        nil
-    end)
-    |> Enum.reject(&is_nil/1)
   end
 end

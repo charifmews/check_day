@@ -25,7 +25,7 @@ defmodule CheckDay.Digests.DigestEmail do
     |> Mailer.deliver!()
   end
 
-  defp render_html(user, date, sections) do
+  def render_html(user, date, sections) do
     greeting = if user.first_name, do: "Hi #{user.first_name}", else: "Hi"
     formatted_date = Calendar.strftime(date, "%A, %B %d, %Y")
 

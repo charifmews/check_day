@@ -17,6 +17,32 @@ defmodule CheckDay.Digests.ContentFetcher do
     route_firecrawl_strategy(block)
   end
 
+  @doc """
+  Concurrently fetches content for a list of blocks and filters out failures.
+  """
+  def fetch_all(blocks) do
+    blocks
+    |> Task.async_stream(
+      fn block ->
+        case fetch(block) do
+          {:ok, results} -> {block, results}
+          {:error, reason} ->
+            Logger.warning("Failed to fetch content for block #{block.id}: #{inspect(reason)}")
+            {block, []}
+        end
+      end,
+      timeout: :infinity,
+      max_concurrency: 3
+    )
+    |> Enum.map(fn
+      {:ok, result} -> result
+      {:exit, reason} ->
+        Logger.error("Content fetch task crashed: #{inspect(reason)}")
+        nil
+    end)
+    |> Enum.reject(&is_nil/1)
+  end
+
   defp route_firecrawl_strategy(%{type: t} = block) when t in [:news, :interest] do
     fetch_via_hub_crawler(block)
   end
@@ -161,7 +187,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     url = "https://query1.finance.yahoo.com/v8/finance/chart/#{symbol}?interval=1d&range=1d"
     
     price_json = 
-      case Req.get(url, headers: [{"User-Agent", "Mozilla/5.0"}], pool_timeout: 45_000, receive_timeout: 45_000) do
+      case Req.get(url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
         {:ok, %Req.Response{status: 200, body: body}} ->
           Jason.encode!(body)
         _ ->
@@ -171,7 +197,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     rss_url = "https://feeds.finance.yahoo.com/rss/2.0/headline?s=#{symbol}&region=US&lang=en-US"
     
     news_xml =
-      case Req.get(rss_url, headers: [{"User-Agent", "Mozilla/5.0"}], pool_timeout: 45_000, receive_timeout: 45_000) do
+      case Req.get(rss_url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
         {:ok, %Req.Response{status: 200, body: body}} ->
           if is_binary(body), do: String.slice(body, 0, 10000), else: "No news parsing"
         _ ->
@@ -869,6 +895,5 @@ defmodule CheckDay.Digests.ContentFetcher do
       provider: :openrouter,
       id: "google/gemini-3-flash-preview"
     })
-    |> Req.merge(receive_timeout: 120_000, pool_timeout: 120_000)
   end
 end

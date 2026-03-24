@@ -44,10 +44,31 @@ defmodule CheckDayWeb.DashboardLive do
      |> assign(:edit_config_rows, [])
      |> assign(:conversation_status, :idle)
      |> assign(:transcript, [])
-     |> assign(:show_voice_panel, needs_onboarding)}
+     |> assign(:show_voice_panel, needs_onboarding)
+     |> assign(:preview_modal_open, false)}
   end
 
   @impl true
+  def handle_event("generate_preview", _params, socket) do
+    user = socket.assigns.current_user
+    blocks = socket.assigns.blocks
+
+    socket =
+      socket
+      |> assign(:preview_modal_open, true)
+      |> assign_async(:preview_html, fn ->
+        sections = CheckDay.Digests.ContentFetcher.fetch_all(blocks)
+        html = CheckDay.Digests.DigestEmail.render_html(user, Date.utc_today(), sections)
+        {:ok, %{preview_html: html}}
+      end)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("close_preview", _params, socket) do
+    {:noreply, assign(socket, :preview_modal_open, false)}
+  end
+
   def handle_event("prev_week", _params, socket) do
     new_start = Date.add(socket.assigns.week_start, -7)
     {:noreply, assign(socket, week_start: new_start, open_day_menu: nil)}
@@ -709,6 +730,15 @@ defmodule CheckDayWeb.DashboardLive do
             </div>
 
             <div class="flex items-center gap-2">
+              <button
+                phx-click="generate_preview"
+                class="hidden sm:flex items-center gap-2 px-4 py-2 mr-3 rounded-full cursor-pointer bg-[oklch(70%_0.213_47.604)] hover:bg-[#ea580c] transition-all duration-300 text-white font-semibold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                id="preview-digest-btn"
+              >
+                <.icon name="hero-sparkles" class="w-4 h-4" />
+                <span>Preview Digest</span>
+              </button>
+
               <button
                 phx-click="prev_week"
                 class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 cursor-pointer backdrop-blur-md dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
@@ -1550,6 +1580,51 @@ defmodule CheckDayWeb.DashboardLive do
           <% end %>
         </div>
       </div>
+      <%!-- Preview Modal --%>
+      <%= if @preview_modal_open do %>
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
+          <div class="relative w-full max-w-3xl max-h-[90vh] bg-white dark:bg-gray-800 rounded-3xl shadow-2xl flex flex-col animate-[slideUp_0.3s_ease-out]">
+            <div class="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700">
+              <div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <.icon name="hero-sparkles" class="w-6 h-6 text-[oklch(70%_0.213_47.604)]" />
+                  Today's Digest Preview
+                </h3>
+                <p class="text-sm text-gray-500 mt-1">Rendered live exclusively for you.</p>
+              </div>
+              <button phx-click="close_preview" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition transition-colors text-gray-500">
+                <.icon name="hero-x-mark" class="w-6 h-6" />
+              </button>
+            </div>
+
+            <div class="flex-1 p-6 overflow-hidden flex flex-col bg-gray-50 dark:bg-gray-900/50 rounded-b-3xl">
+              <.async_result :let={payload} assign={@preview_html}>
+                <:loading>
+                  <div class="flex flex-col items-center justify-center py-20 h-full">
+                    <div class="relative w-20 h-20 mb-6">
+                      <div class="absolute inset-0 bg-[oklch(70%_0.213_47.604)] rounded-full animate-ping opacity-20"></div>
+                      <div class="absolute inset-2 bg-[oklch(70%_0.213_47.604)] rounded-full animate-pulse opacity-40"></div>
+                      <.icon name="hero-arrow-path" class="absolute inset-0 w-full h-full text-[oklch(70%_0.213_47.604)] animate-spin" />
+                    </div>
+                    <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Generating your Digest...</h4>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
+                      We're crawling the web, synthesizing news, and fetching realtime metrics. This usually takes 15-40 seconds for a full dash.
+                    </p>
+                  </div>
+                </:loading>
+                <:failed :let={_reason}>
+                  <div class="py-20 text-center text-red-500">
+                    <.icon name="hero-exclamation-triangle" class="w-12 h-12 mx-auto mb-4" />
+                    <p class="font-bold">Failed to load preview.</p>
+                  </div>
+                </:failed>
+
+                <iframe srcdoc={payload} class="w-full h-full min-h-[500px] border border-gray-200 dark:border-gray-700 rounded-xl bg-white shadow-sm flex-1"></iframe>
+              </.async_result>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </Layouts.app>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".TimePicker">
       export default {
