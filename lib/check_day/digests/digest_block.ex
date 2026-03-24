@@ -19,6 +19,7 @@ defmodule CheckDay.Digests.DigestBlock do
       accept [:type, :label, :config, :position, :enabled, :active_days, :user_id]
       change CheckDay.Digests.Changes.NormalizeWeatherLocation
       change CheckDay.Digests.Changes.NormalizeCompetitor
+      change CheckDay.Digests.Changes.NormalizeStock
     end
 
     update :update do
@@ -26,6 +27,7 @@ defmodule CheckDay.Digests.DigestBlock do
       accept [:type, :label, :config, :position, :enabled, :active_days]
       change CheckDay.Digests.Changes.NormalizeWeatherLocation
       change CheckDay.Digests.Changes.NormalizeCompetitor
+      change CheckDay.Digests.Changes.NormalizeStock
     end
 
     update :update_days do

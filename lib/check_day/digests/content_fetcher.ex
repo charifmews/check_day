@@ -48,6 +48,10 @@ defmodule CheckDay.Digests.ContentFetcher do
     fetch_via_competitor_crawler(block)
   end
 
+  defp route_firecrawl_strategy(%{type: :stock} = block) do
+    fetch_via_stock_api(block)
+  end
+
   defp route_firecrawl_strategy(block) do
     fetch_via_basic_search(block)
   end
@@ -153,6 +157,83 @@ defmodule CheckDay.Digests.ContentFetcher do
       _ ->
         Logger.error("Nominatim geocoding failed for #{location}")
         {:error, "Nominatim geocoding failed"}
+    end
+  end
+
+  # ===========================================================================
+  # STRATEGY: LIVE STOCK API (For :stock)
+  # ===========================================================================
+
+  @stock_final_schema Zoi.map(%{
+    headline: Zoi.string(description: "A sharp headline with the stock ticker and price movement (e.g. 'AAPL is up 1.5% today')."),
+    digest_markdown: Zoi.string(description: "A rich markdown body synthesizing the stock performance and linking to the recent news stories using markdown links [Title](URL)."),
+    source_urls: Zoi.list(Zoi.string(), description: "A list of the raw news URLs used as sources.")
+  })
+
+  defp fetch_via_stock_api(block) do
+    config = block.config || %{}
+    company = config["company_name"] || block.label
+    symbol = config["symbol"] || block.label
+
+    Logger.info("Stock API initiated for: #{company} (#{symbol})")
+
+    url = "https://query1.finance.yahoo.com/v8/finance/chart/#{symbol}?interval=1d&range=1d"
+    
+    price_json = 
+      case Req.get(url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
+        {:ok, %Req.Response{status: 200, body: body}} ->
+          Jason.encode!(body)
+        _ ->
+          nil
+      end
+
+    rss_url = "https://feeds.finance.yahoo.com/rss/2.0/headline?s=#{symbol}&region=US&lang=en-US"
+    
+    news_xml =
+      case Req.get(rss_url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
+        {:ok, %Req.Response{status: 200, body: body}} ->
+          if is_binary(body), do: String.slice(body, 0, 10000), else: "No news parsing"
+        _ ->
+          nil
+      end
+
+    prompt_final = """
+    You are generating a daily digest block for the stock: #{symbol} (#{company}).
+    
+    I am providing you with two strictly accurate data sources:
+    
+    1. RAW JSON PRICE DATA (From Yahoo Finance chart endpoint):
+    #{price_json || "Not available"}
+    
+    2. RAW RSS NEWS FEED (From Yahoo Finance):
+    #{news_xml || "Not available"}
+    
+    RULES:
+    - Write a highly engaging, concise, professional final digest.
+    - Extract the actual current price, and if possible, calculate the percentage change from the previous close using the JSON data.
+    - Explain *why* the stock might be moving today by extracting the top 1-3 breaking news headlines from the XML feed.
+    - Embed the most interesting news links directly into your summary using ONLY markdown links [Title](URL).
+    - If either piece of data is missing, fail gracefully.
+    - Do NOT hallucinate numbers! Rely only on the JSON payload.
+    """
+
+    try do
+      result = ReqLLM.generate_object!(llm_model(), prompt_final, @stock_final_schema)
+      
+      raw_source_urls = result[:source_urls] || result["source_urls"] || []
+      sources = Enum.map(raw_source_urls, &source_tuple/1)
+
+      {:ok, [
+        %{
+          headline: result[:headline] || result["headline"] || "#{symbol} Stock Update",
+          digest_summary: result[:digest_markdown] || result["digest_markdown"],
+          sources: sources
+        }
+      ]}
+    rescue
+      e ->
+        Logger.error("Failed to synthesize stock data: #{inspect(e)}")
+        {:error, "Failed to synthesize stock data"}
     end
   end
 
