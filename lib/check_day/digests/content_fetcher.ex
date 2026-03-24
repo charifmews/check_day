@@ -107,7 +107,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     location = block.config["location"] || block.label
     Logger.info("Weather API initiated for location: #{location}")
 
-    case Req.get("https://nominatim.openstreetmap.org/search", 
+    case Req.get("https://nominatim.openstreetmap.org/search",
            params: [q: location, format: "json", limit: 1],
            headers: [{"User-Agent", "CheckDay_Production_App"}]
          ) do
@@ -115,7 +115,7 @@ defmodule CheckDay.Digests.ContentFetcher do
         lat = geo["lat"]
         lon = geo["lon"]
         display_name = geo["display_name"]
-        
+
         case Req.get("https://api.open-meteo.com/v1/forecast", params: [
                latitude: lat,
                longitude: lon,
@@ -127,10 +127,10 @@ defmodule CheckDay.Digests.ContentFetcher do
             prompt = """
             You are a helpful assistant writing a brief weather summary for a daily digest app.
             The user's location is precisely: #{display_name}.
-            
+
             Here is the raw, 100% accurate numerical JSON weather data for today:
             #{Jason.encode!(weather_data)}
-            
+
             RULES:
             - Write a highly engaging, concise (1-3 sentences) markdown summary.
             - You MUST explicitly include the current temperature.
@@ -139,10 +139,10 @@ defmodule CheckDay.Digests.ContentFetcher do
             - Provide temperatures natively (e.g., if the JSON data is in Celsius, write it as °C).
             - Do NOT hallucinate temperatures or conditions. Rely ONLY on the provided JSON numbers.
             """
-            
+
             try do
               result = ReqLLM.generate_object!(llm_model(), prompt, @weather_schema)
-              
+
               {:ok, [
                 %{
                   headline: result[:headline] || result["headline"] || "Weather for #{location}",
@@ -155,12 +155,12 @@ defmodule CheckDay.Digests.ContentFetcher do
                 Logger.error("Weather LLM parsing failed: #{inspect(e)}")
                 {:error, "Failed to parse weather"}
             end
-            
+
           _ ->
              Logger.error("Open-Meteo forecast failed")
              {:error, "Open-Meteo forecast failed"}
         end
-        
+
       _ ->
         Logger.error("Nominatim geocoding failed for #{location}")
         {:error, "Nominatim geocoding failed"}
@@ -185,8 +185,8 @@ defmodule CheckDay.Digests.ContentFetcher do
     Logger.info("Stock API initiated for: #{company} (#{symbol})")
 
     url = "https://query1.finance.yahoo.com/v8/finance/chart/#{symbol}?interval=1d&range=1d"
-    
-    price_json = 
+
+    price_json =
       case Req.get(url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
         {:ok, %Req.Response{status: 200, body: body}} ->
           Jason.encode!(body)
@@ -195,7 +195,7 @@ defmodule CheckDay.Digests.ContentFetcher do
       end
 
     rss_url = "https://feeds.finance.yahoo.com/rss/2.0/headline?s=#{symbol}&region=US&lang=en-US"
-    
+
     news_xml =
       case Req.get(rss_url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
         {:ok, %Req.Response{status: 200, body: body}} ->
@@ -206,15 +206,15 @@ defmodule CheckDay.Digests.ContentFetcher do
 
     prompt_final = """
     You are generating a daily digest block for the stock: #{symbol} (#{company}).
-    
+
     I am providing you with two strictly accurate data sources:
-    
+
     1. RAW JSON PRICE DATA (From Yahoo Finance chart endpoint):
     #{price_json || "Not available"}
-    
+
     2. RAW RSS NEWS FEED (From Yahoo Finance):
     #{news_xml || "Not available"}
-    
+
     RULES:
     - Write a highly engaging, concise, professional final digest.
     - Extract the actual current price, and if possible, calculate the percentage change from the previous close using the JSON data.
@@ -226,7 +226,7 @@ defmodule CheckDay.Digests.ContentFetcher do
 
     try do
       result = ReqLLM.generate_object!(llm_model(), prompt_final, @stock_final_schema)
-      
+
       raw_source_urls = result[:source_urls] || result["source_urls"] || []
       sources = Enum.map(raw_source_urls, &source_tuple/1)
 
@@ -250,7 +250,7 @@ defmodule CheckDay.Digests.ContentFetcher do
 
   @source_schema Zoi.map(%{
     urls: Zoi.list(Zoi.string(), description: "The exact, direct URLs (must include https://) to the 'latest news', 'discussions', or 'blog' indexes of the top 3 best community sites for this topic.")
-          |> Zoi.min(3)
+          |> Zoi.min(1)
           |> Zoi.max(5)
   })
 
@@ -278,7 +278,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     For example, instead of 'news.yCombinator.com', use 'https://news.ycombinator.com'.
     Instead of 'elixirforum.com', use 'https://elixirforum.com/latest'.
     IMPORTANT: Do NOT suggest reddit.com, twitter.com, x.com, facebook.com, or linkedin.com, as they block scrapers.
-    Provide minimum 3 and maximum 5 URLs.
+    Provide up to 5 URLs. ONLY provide URLs that you are 100% certain exist. If you only know 1 valid URL, return just 1.
     """
 
     urls =
@@ -346,12 +346,12 @@ defmodule CheckDay.Digests.ContentFetcher do
     You are reading an index page (forum, news aggregator, or blog) related to #{topic}.
     The base URL is: #{url}. Use this to convert relative links to absolute links.
     Today's current date and time is: #{current_date}.
-    
+
     Extract the most active / top headlines or discussions listed on the page.
-    IMPORTANT CRITICAL INSTRUCTION: You must ONLY extract discussions that are extremely recent (published or last replied to within the last 24 to 48 hours). 
+    IMPORTANT CRITICAL INSTRUCTION: You must ONLY extract discussions that are extremely recent (published or last replied to within the last 24 to 48 hours).
     Ignore anything older than a few days. Look closely at timestamps, dates like "2h" or "yesterday", or compare dates with the current date to determine recency.
     If there are no discussions from the last 2 days on this page, return an empty array for discussions.
-    
+
     Provide a general summary of the trending topics from these recent discussions.
 
     SOURCE MATERIAL:
@@ -381,18 +381,18 @@ defmodule CheckDay.Digests.ContentFetcher do
     prompt = """
     You are generating a daily digest block for the topic: "#{topic}".
     I have scraped multiple community hubs and extracted ONLY the most recent, top discussions from the last 24-48 hours.
-    
+
     FINDINGS:
     #{findings_text}
-    
-    Create a highly engaging, concise final digest. 
+
+    Create a highly engaging, concise final digest.
     Synthesize the information. If multiple hubs talk about the same release, combine them.
     Embed the most interesting links directly into your summary using ONLY markdown links [Title](URL).
     """
 
     try do
       result = ReqLLM.generate_object!(llm_model(), prompt, @final_schema)
-      
+
       raw_source_urls = result[:source_urls] || result["source_urls"] || []
       sources = Enum.map(raw_source_urls, &source_tuple/1)
 
@@ -443,7 +443,8 @@ defmodule CheckDay.Digests.ContentFetcher do
 
     prompt = """
     We want to track the latest official announcements, press releases, or changelogs for the company: #{company_name} (#{domain}).
-    Provide the top 2-3 direct absolute URLs to their OFFICIAL blog, newsroom, press, or changelog index pages.
+    Provide up to 3 direct absolute URLs to their OFFICIAL blog, newsroom, press, or changelog index pages.
+    ONLY provide URLs that you are 100% certain exist. If you only know 1 valid URL, return just 1.
     (e.g., https://#{domain}/blog or https://#{domain}/changelog or https://#{domain}/news).
     """
 
@@ -510,11 +511,11 @@ defmodule CheckDay.Digests.ContentFetcher do
     You are reading an official index page (blog, changelog, newsroom) for the company: #{company_name}.
     The base URL is: #{url}. Use this to convert relative links to absolute links.
     Today's current date and time is: #{current_date}.
-    
+
     Extract the most important recent product announcements, feature releases, or strategic news listed on the page.
     IMPORTANT CRITICAL INSTRUCTION: Extract the absolute latest, most recent announcements present on this page. Focus on the very top of the feed or timeline to grab their newest updates.
     Do NOT return an empty array if there is recent news; extract the top items.
-    
+
     SOURCE MATERIAL:
     #{markdown}
     """
@@ -542,18 +543,18 @@ defmodule CheckDay.Digests.ContentFetcher do
     prompt = """
     You are generating a daily digest block for competitor intelligence on: "#{company_name}".
     I have scraped their official blogs/changelogs and extracted ONLY the most recent product updates and announcements.
-    
+
     FINDINGS:
     #{findings_text}
-    
-    Create a highly engaging, concise, professional final digest. 
+
+    Create a highly engaging, concise, professional final digest.
     Synthesize the information. If there are multiple updates, summarize them cleanly using bullet points.
     Embed the most interesting links directly into your summary using ONLY markdown links [Title](URL).
     """
 
     try do
       result = ReqLLM.generate_object!(llm_model(), prompt, @competitor_final_schema)
-      
+
       raw_source_urls = result[:source_urls] || result["source_urls"] || []
       sources = Enum.map(raw_source_urls, &source_tuple/1)
 
