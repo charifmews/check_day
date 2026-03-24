@@ -591,9 +591,7 @@ defmodule CheckDayWeb.DashboardLive do
       :interest -> "hero-sparkles"
       :competitor -> "hero-building-office-2"
       :stock -> "hero-chart-bar"
-      :agenda -> "hero-calendar-days"
-      :habit -> "hero-check-circle"
-      :custom -> "hero-puzzle-piece"
+
       _ -> "hero-square-3-stack-3d"
     end
   end
@@ -615,14 +613,6 @@ defmodule CheckDayWeb.DashboardLive do
       :stock ->
         "bg-emerald-50/70 border-emerald-200/60 dark:bg-emerald-900/20 dark:border-emerald-800/50 backdrop-blur-md shadow-sm"
 
-      :agenda ->
-        "bg-blue-50/70 border-blue-200/60 dark:bg-blue-900/20 dark:border-blue-800/50 backdrop-blur-md shadow-sm"
-
-      :habit ->
-        "bg-green-50/70 border-green-200/60 dark:bg-green-900/20 dark:border-green-800/50 backdrop-blur-md shadow-sm"
-
-      :custom ->
-        "bg-gray-50/70 border-gray-200/60 dark:bg-gray-800/30 dark:border-gray-700/50 backdrop-blur-md shadow-sm"
 
       _ ->
         "bg-gray-50/70 border-gray-200/60 dark:bg-gray-800/30 dark:border-gray-700/50 backdrop-blur-md shadow-sm"
@@ -636,9 +626,7 @@ defmodule CheckDayWeb.DashboardLive do
       :interest -> "text-amber-600 dark:text-amber-400"
       :competitor -> "text-red-600 dark:text-red-400"
       :stock -> "text-emerald-600 dark:text-emerald-400"
-      :agenda -> "text-blue-600 dark:text-blue-400"
-      :habit -> "text-green-600 dark:text-green-400"
-      :custom -> "text-gray-600 dark:text-gray-400"
+
       _ -> "text-gray-600 dark:text-gray-400"
     end
   end
@@ -650,9 +638,7 @@ defmodule CheckDayWeb.DashboardLive do
       :interest -> "text-amber-900 dark:text-amber-200"
       :competitor -> "text-red-900 dark:text-red-200"
       :stock -> "text-emerald-900 dark:text-emerald-200"
-      :agenda -> "text-blue-900 dark:text-blue-200"
-      :habit -> "text-green-900 dark:text-green-200"
-      :custom -> "text-gray-900 dark:text-gray-200"
+
       _ -> "text-gray-900 dark:text-gray-200"
     end
   end
@@ -1082,9 +1068,7 @@ defmodule CheckDayWeb.DashboardLive do
                           🏢 Competitor
                         </option>
                         <option value="stock" selected={@add_type == "stock"}>📈 Stock</option>
-                        <option value="agenda" selected={@add_type == "agenda"}>📅 Agenda</option>
-                        <option value="habit" selected={@add_type == "habit"}>✅ Habit</option>
-                        <option value="custom" selected={@add_type == "custom"}>🧩 Custom</option>
+
                       </select>
                       <.icon
                         name="hero-chevron-down"
@@ -1246,15 +1230,7 @@ defmodule CheckDayWeb.DashboardLive do
                                 <option value="stock" selected={@edit_type == "stock"}>
                                   📈 Stock
                                 </option>
-                                <option value="agenda" selected={@edit_type == "agenda"}>
-                                  📅 Agenda
-                                </option>
-                                <option value="habit" selected={@edit_type == "habit"}>
-                                  ✅ Habit
-                                </option>
-                                <option value="custom" selected={@edit_type == "custom"}>
-                                  🧩 Custom
-                                </option>
+
                               </select>
                               <.icon
                                 name="hero-chevron-down"

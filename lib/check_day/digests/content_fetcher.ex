@@ -12,28 +12,9 @@ defmodule CheckDay.Digests.ContentFetcher do
 
   Returns `{:ok, results}` where results is a list of maps with
   `:headline`, `:digest_summary`, and `:sources` (list of `{url, domain}` tuples).
-
-  For blocks that don't need Firecrawl (agenda, habit), returns static content.
   """
   def fetch(block) do
-    case block.type do
-      :agenda ->
-        {:ok,
-         [
-           %{
-             headline: "Agenda",
-             digest_summary: "Calendar integration coming soon.",
-             sources: []
-           }
-         ]}
-
-      :habit ->
-        reminder = get_in(block.config, ["reminder"]) || block.label
-        {:ok, [%{headline: block.label, digest_summary: reminder, sources: []}]}
-
-      _ ->
-        route_firecrawl_strategy(block)
-    end
+    route_firecrawl_strategy(block)
   end
 
   defp route_firecrawl_strategy(%{type: t} = block) when t in [:news, :interest] do

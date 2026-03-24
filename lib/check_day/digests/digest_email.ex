@@ -185,9 +185,6 @@ defmodule CheckDay.Digests.DigestEmail do
   defp type_emoji(:interest), do: "✨"
   defp type_emoji(:competitor), do: "🏢"
   defp type_emoji(:stock), do: "📈"
-  defp type_emoji(:agenda), do: "📅"
-  defp type_emoji(:habit), do: "✅"
-  defp type_emoji(:custom), do: "🧩"
   defp type_emoji(_), do: "📋"
 
   defp escape(nil), do: ""

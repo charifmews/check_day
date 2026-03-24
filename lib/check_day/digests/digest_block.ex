@@ -48,10 +48,7 @@ defmodule CheckDay.Digests.DigestBlock do
                     :news,
                     :interest,
                     :competitor,
-                    :stock,
-                    :agenda,
-                    :habit,
-                    :custom
+                    :stock
                   ]
 
       allow_nil? false
