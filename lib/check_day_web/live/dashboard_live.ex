@@ -177,7 +177,8 @@ defmodule CheckDayWeb.DashboardLive do
     {:noreply, assign(socket, :show_add_form, !socket.assigns.show_add_form)}
   end
 
-  def handle_event("update_add_type", %{"type" => type}, socket) do
+  def handle_event("update_add_type", payload, socket) do
+    type = Map.get(payload, "type") || Map.get(payload, "value") || "weather"
     {:noreply, assign(socket, :add_type, type)}
   end
 
@@ -261,7 +262,8 @@ defmodule CheckDayWeb.DashboardLive do
     {:noreply, assign(socket, :editing_block_id, nil)}
   end
 
-  def handle_event("update_edit_type", %{"type" => type}, socket) do
+  def handle_event("update_edit_type", payload, socket) do
+    type = Map.get(payload, "type") || Map.get(payload, "value") || "weather"
     {:noreply, assign(socket, :edit_type, type)}
   end
 
@@ -582,15 +584,32 @@ defmodule CheckDayWeb.DashboardLive do
 
   defp type_bg(type) do
     case type do
-      :weather -> "bg-sky-50 border-sky-200 dark:bg-sky-950/40 dark:border-sky-800"
-      :news -> "bg-purple-50 border-purple-200 dark:bg-purple-950/40 dark:border-purple-800"
-      :interest -> "bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800"
-      :competitor -> "bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-800"
-      :stock -> "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800"
-      :agenda -> "bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-800"
-      :habit -> "bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-800"
-      :custom -> "bg-gray-50 border-gray-200 dark:bg-gray-800/40 dark:border-gray-700"
-      _ -> "bg-gray-50 border-gray-200 dark:bg-gray-800/40 dark:border-gray-700"
+      :weather ->
+        "bg-sky-50/70 border-sky-200/60 dark:bg-sky-900/20 dark:border-sky-800/50 backdrop-blur-md shadow-sm"
+
+      :news ->
+        "bg-purple-50/70 border-purple-200/60 dark:bg-purple-900/20 dark:border-purple-800/50 backdrop-blur-md shadow-sm"
+
+      :interest ->
+        "bg-amber-50/70 border-amber-200/60 dark:bg-amber-900/20 dark:border-amber-800/50 backdrop-blur-md shadow-sm"
+
+      :competitor ->
+        "bg-red-50/70 border-red-200/60 dark:bg-red-900/20 dark:border-red-800/50 backdrop-blur-md shadow-sm"
+
+      :stock ->
+        "bg-emerald-50/70 border-emerald-200/60 dark:bg-emerald-900/20 dark:border-emerald-800/50 backdrop-blur-md shadow-sm"
+
+      :agenda ->
+        "bg-blue-50/70 border-blue-200/60 dark:bg-blue-900/20 dark:border-blue-800/50 backdrop-blur-md shadow-sm"
+
+      :habit ->
+        "bg-green-50/70 border-green-200/60 dark:bg-green-900/20 dark:border-green-800/50 backdrop-blur-md shadow-sm"
+
+      :custom ->
+        "bg-gray-50/70 border-gray-200/60 dark:bg-gray-800/30 dark:border-gray-700/50 backdrop-blur-md shadow-sm"
+
+      _ ->
+        "bg-gray-50/70 border-gray-200/60 dark:bg-gray-800/30 dark:border-gray-700/50 backdrop-blur-md shadow-sm"
     end
   end
 
@@ -610,15 +629,15 @@ defmodule CheckDayWeb.DashboardLive do
 
   defp type_label_color(type) do
     case type do
-      :weather -> "text-sky-800 dark:text-sky-300"
-      :news -> "text-purple-800 dark:text-purple-300"
-      :interest -> "text-amber-800 dark:text-amber-300"
-      :competitor -> "text-red-800 dark:text-red-300"
-      :stock -> "text-emerald-800 dark:text-emerald-300"
-      :agenda -> "text-blue-800 dark:text-blue-300"
-      :habit -> "text-green-800 dark:text-green-300"
-      :custom -> "text-gray-800 dark:text-gray-300"
-      _ -> "text-gray-800 dark:text-gray-300"
+      :weather -> "text-sky-900 dark:text-sky-200"
+      :news -> "text-purple-900 dark:text-purple-200"
+      :interest -> "text-amber-900 dark:text-amber-200"
+      :competitor -> "text-red-900 dark:text-red-200"
+      :stock -> "text-emerald-900 dark:text-emerald-200"
+      :agenda -> "text-blue-900 dark:text-blue-200"
+      :habit -> "text-green-900 dark:text-green-200"
+      :custom -> "text-gray-900 dark:text-gray-200"
+      _ -> "text-gray-900 dark:text-gray-200"
     end
   end
 
@@ -628,32 +647,41 @@ defmodule CheckDayWeb.DashboardLive do
 
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user}>
-      <div class="w-full max-w-[1600px] mx-auto px-6 lg:px-10 py-8">
+      <div class="w-full relative z-10 pt-4">
         <%= if @needs_onboarding do %>
           <%!-- Onboarding Welcome Banner --%>
-          <div class="flex flex-col items-center justify-center min-h-[60vh]" id="onboarding-banner">
-            <div class="relative mb-8">
-              <div class="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl shadow-indigo-300/40 dark:shadow-indigo-900/40 animate-pulse">
-                <.icon name="hero-microphone" class="w-12 h-12 text-white" />
+          <div
+            class="flex flex-col items-center justify-center min-h-[60vh] animate-[slideUp_0.8s_ease-out_forwards]"
+            id="onboarding-banner"
+          >
+            <div class="relative mb-10 group cursor-default">
+              <div class="absolute inset-0 bg-gradient-to-br from-[oklch(70%_0.213_47.604)] to-orange-500 dark:from-[oklch(70%_0.213_47.604)] dark:to-orange-600 rounded-full blur-2xl opacity-40 group-hover:opacity-60 transition-opacity duration-500">
               </div>
-              <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-green-400 border-2 border-white dark:border-gray-900 animate-bounce" />
+              <div class="relative w-28 h-28 rounded-full bg-gradient-to-br from-[oklch(70%_0.213_47.604)] to-orange-500 flex items-center justify-center shadow-2xl shadow-[oklch(70%_0.213_47.604)]/30 border border-white/20 dark:border-white/10 animate-[pulse_3s_ease-in-out_infinite]">
+                <.icon name="hero-microphone" class="w-14 h-14 text-white" />
+              </div>
+              <div class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-green-400 border-[3px] border-gray-50 dark:border-[#0a0f18] animate-bounce shadow-md" />
             </div>
 
             <h1
-              class="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-3 text-center"
+              class="text-4xl sm:text-5xl font-black text-gray-900 dark:text-white mb-4 text-center tracking-tight"
               id="onboarding-title"
             >
-              Welcome to CheckDay!
+              Welcome to
+              <span class="bg-clip-text text-transparent bg-gradient-to-r from-[oklch(70%_0.213_47.604)] to-orange-400">
+                Check.Day
+              </span>
             </h1>
-            <p class="text-lg text-gray-500 dark:text-gray-400 mb-2 text-center max-w-lg">
+            <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-3 text-center max-w-lg font-medium">
               Let's set up your personalized daily digest.
             </p>
-            <p class="text-base text-gray-400 dark:text-gray-500 mb-10 text-center max-w-md">
-              Click the <span class="font-semibold text-indigo-500">microphone button</span>
-              in the bottom-right corner to start a conversation and I'll configure everything for you.
+            <p class="text-base text-gray-500 dark:text-gray-400 mb-12 text-center max-w-md leading-relaxed">
+              Click the
+              <span class="font-semibold text-[oklch(70%_0.213_47.604)]">microphone button</span>
+              in the bottom-right corner to start a conversation and your assistant will effortlessly configure everything for you.
             </p>
 
-            <div class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
+            <div class="flex items-center gap-2.5 px-6 py-3 rounded-full bg-white dark:bg-gray-900 border border-[oklch(70%_0.213_47.604)]/20 shadow-sm text-[oklch(60%_0.213_47.604)] dark:text-[oklch(75%_0.213_47.604)] text-sm font-semibold">
               <.icon name="hero-arrow-down-right" class="w-5 h-5 animate-bounce" />
               <span>Your voice assistant is waiting</span>
             </div>
@@ -662,11 +690,17 @@ defmodule CheckDayWeb.DashboardLive do
           <%!-- Header --%>
           <div class="flex items-center justify-between mb-8">
             <div>
-              <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100" id="dashboard-title">
+              <h1
+                class="text-3xl font-black tracking-tight text-gray-900 dark:text-white"
+                id="dashboard-title"
+              >
                 Your Week
               </h1>
-              <div class="flex items-center gap-3 mt-1">
-                <p class="text-gray-500 dark:text-gray-400" id="dashboard-subtitle">
+              <div class="flex items-center gap-3 mt-1.5">
+                <p
+                  class="text-sm font-medium text-gray-500 dark:text-gray-400"
+                  id="dashboard-subtitle"
+                >
                   {month_label(@week_start)}
                 </p>
               </div>
@@ -675,23 +709,15 @@ defmodule CheckDayWeb.DashboardLive do
             <div class="flex items-center gap-2">
               <button
                 phx-click="prev_week"
-                class={[
-                  "p-2 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700",
-                  "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
-                  "transition-all duration-200"
-                ]}
+                class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 backdrop-blur-md dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
                 id="prev-week-btn"
               >
-                <.icon name="hero-chevron-left" class="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                <.icon name="hero-chevron-left" class="w-5 h-5" />
               </button>
 
               <button
                 phx-click="this_week"
-                class={[
-                  "px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300",
-                  "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
-                  "transition-all duration-200"
-                ]}
+                class="px-5 py-2.5 rounded-full border border-gray-200/60 bg-white/70 backdrop-blur-md text-sm font-semibold text-gray-700 shadow-sm dark:bg-gray-800/60 dark:border-gray-700/60 dark:text-gray-200 hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300"
                 id="this-week-btn"
               >
                 Today
@@ -699,14 +725,10 @@ defmodule CheckDayWeb.DashboardLive do
 
               <button
                 phx-click="next_week"
-                class={[
-                  "p-2 rounded-lg border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700",
-                  "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
-                  "transition-all duration-200"
-                ]}
+                class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 backdrop-blur-md dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
                 id="next-week-btn"
               >
-                <.icon name="hero-chevron-right" class="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                <.icon name="hero-chevron-right" class="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -719,34 +741,41 @@ defmodule CheckDayWeb.DashboardLive do
               <% is_date_skipped = day_date_skipped?(day, @skipped_dates) %>
               <div
                 class={[
-                  "rounded-xl border flex flex-col min-h-[420px] transition-all duration-200 relative",
+                  "rounded-3xl border flex flex-col min-h-[420px] transition-all duration-300 relative overflow-hidden group/day",
                   cond do
                     is_disabled ->
-                      "border-gray-200 bg-gray-50/80 opacity-50 dark:border-gray-700 dark:bg-gray-800/50"
+                      "border-gray-200/50 bg-gray-50/40 opacity-50 dark:border-gray-800/50 dark:bg-gray-900/40 backdrop-blur-md"
 
                     day == @today ->
-                      "border-indigo-300 bg-indigo-50/20 shadow-md ring-1 ring-indigo-200/50 dark:border-indigo-700 dark:bg-indigo-950/30 dark:ring-indigo-800/50"
+                      "border-[oklch(70%_0.213_47.604)]/40 bg-white/80 shadow-xl ring-1 ring-[oklch(70%_0.213_47.604)]/20 dark:border-[oklch(70%_0.213_47.604)]/50 dark:bg-gray-900/60 backdrop-blur-xl dark:ring-[oklch(70%_0.213_47.604)]/30 z-10"
 
                     true ->
-                      "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600"
+                      "border-gray-200/60 bg-white/70 hover:shadow-lg dark:border-gray-800/60 dark:bg-gray-900/40 backdrop-blur-xl hover:border-gray-300/60 dark:hover:border-gray-700/60"
                   end
                 ]}
                 id={"day-#{day}"}
               >
+                <%= if day == @today do %>
+                  <div class="absolute inset-0 bg-gradient-to-b from-[oklch(70%_0.213_47.604)]/5 to-transparent rounded-3xl opacity-100 pointer-events-none">
+                  </div>
+                <% else %>
+                  <div class="absolute inset-0 bg-gradient-to-b from-gray-500/5 to-transparent rounded-3xl opacity-0 group-hover/day:opacity-100 transition-opacity duration-500 pointer-events-none">
+                  </div>
+                <% end %>
+
                 <%!-- Day Header --%>
                 <div
                   class={[
-                    "px-3 py-3 border-b shrink-0 rounded-t-xl relative",
-                    "transition-all duration-200",
+                    "px-4 py-4 border-b shrink-0 relative z-10 transition-all duration-300",
                     cond do
                       is_disabled ->
-                        "border-gray-200 bg-gray-100/50 dark:border-gray-700 dark:bg-gray-800/50"
+                        "border-gray-200/50 bg-gray-100/30 dark:border-gray-800/50 dark:bg-gray-800/30"
 
                       day == @today ->
-                        "border-indigo-200/60 bg-indigo-50/50 dark:border-indigo-800/60 dark:bg-indigo-950/30"
+                        "border-[oklch(70%_0.213_47.604)]/20 bg-[oklch(70%_0.213_47.604)]/5 dark:border-[oklch(70%_0.213_47.604)]/30 dark:bg-[oklch(70%_0.213_47.604)]/10"
 
                       true ->
-                        "border-gray-100 dark:border-gray-700"
+                        "border-gray-100/80 dark:border-gray-800/80 bg-white/40 dark:bg-gray-800/20"
                     end
                   ]}
                   id={"day-header-#{day}"}
@@ -756,32 +785,37 @@ defmodule CheckDayWeb.DashboardLive do
                     phx-click="toggle_day_menu"
                     phx-value-date={Date.to_iso8601(day)}
                     class={[
-                      "absolute top-2 right-2 p-1 rounded-md cursor-pointer",
-                      "hover:bg-gray-200/60 transition-all duration-150 dark:hover:bg-gray-600/40",
-                      "text-gray-300 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-300"
+                      "absolute top-3 right-3 p-1.5 rounded-lg cursor-pointer",
+                      "hover:bg-gray-200/60 transition-all duration-200 dark:hover:bg-gray-700/60",
+                      "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
                     ]}
                     id={"day-menu-btn-#{day}"}
                   >
-                    <.icon name="hero-no-symbol-mini" class="w-4 h-4" />
+                    <.icon name="hero-ellipsis-horizontal" class="w-5 h-5" />
                   </button>
 
                   <%!-- Centered day name + number --%>
-                  <div class="text-center">
+                  <div class="text-center mt-2">
                     <p class={[
-                      "text-xs font-semibold uppercase tracking-wider",
+                      "text-xs font-bold uppercase tracking-widest",
                       cond do
-                        is_disabled -> "text-gray-400 line-through dark:text-gray-500"
-                        day == @today -> "text-indigo-600 dark:text-indigo-400"
-                        true -> "text-gray-400 dark:text-gray-500"
+                        is_disabled ->
+                          "text-gray-400 line-through dark:text-gray-500"
+
+                        day == @today ->
+                          "text-[oklch(70%_0.213_47.604)] dark:text-[oklch(75%_0.213_47.604)]"
+
+                        true ->
+                          "text-gray-400 dark:text-gray-500"
                       end
                     ]}>
                       {day_name(day)}
                     </p>
                     <p class={[
-                      "text-xl font-bold",
+                      "text-2xl font-black mt-0.5",
                       cond do
                         is_disabled -> "text-gray-400 dark:text-gray-500"
-                        day == @today -> "text-indigo-700 dark:text-indigo-300"
+                        day == @today -> "text-gray-900 dark:text-white"
                         true -> "text-gray-800 dark:text-gray-200"
                       end
                     ]}>
@@ -791,7 +825,7 @@ defmodule CheckDayWeb.DashboardLive do
                       <form
                         phx-change="update_digest_time"
                         id={"time-form-#{day}"}
-                        class="flex items-center justify-center mt-1.5"
+                        class="flex items-center justify-center mt-3"
                       >
                         <input
                           type="hidden"
@@ -805,7 +839,7 @@ defmodule CheckDayWeb.DashboardLive do
                           name="time"
                           id={"time-#{day}"}
                           phx-hook=".TimePicker"
-                          class="text-xs font-medium text-indigo-600 bg-indigo-50/50 border border-indigo-100 rounded-md px-1.5 py-0.5 cursor-pointer focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300 w-[85px] text-center dark:text-indigo-400 dark:bg-indigo-950/30 dark:border-indigo-800 dark:focus:ring-indigo-700 dark:focus:border-indigo-700"
+                          class="text-[13px] font-semibold text-[oklch(70%_0.213_47.604)] bg-[oklch(70%_0.213_47.604)]/5 border border-[oklch(70%_0.213_47.604)]/20 rounded-md px-2 py-1 cursor-pointer focus:ring-2 focus:ring-[oklch(70%_0.213_47.604)]/50 focus:border-[oklch(70%_0.213_47.604)] focus:outline-none w-[90px] text-center shadow-sm dark:bg-[oklch(70%_0.213_47.604)]/10 dark:text-[oklch(75%_0.213_47.604)] dark:border-[oklch(70%_0.213_47.604)]/30 transition-all hover:bg-[oklch(70%_0.213_47.604)]/10"
                         />
                       </form>
                     <% end %>
@@ -814,14 +848,14 @@ defmodule CheckDayWeb.DashboardLive do
                   <%!-- Status badge below number --%>
                   <%= cond do %>
                     <% is_weekly_off -> %>
-                      <div class="text-center mt-1">
-                        <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 font-medium dark:bg-orange-900/40 dark:text-orange-400">
-                          Every {day_name(day)}
+                      <div class="text-center mt-2.5">
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-orange-100/80 text-orange-700 font-medium dark:bg-orange-900/50 dark:text-orange-300 border border-orange-200/50 dark:border-orange-800/50 shadow-sm">
+                          Every {day_name(day)} off
                         </span>
                       </div>
                     <% is_date_skipped -> %>
-                      <div class="text-center mt-1">
-                        <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-medium dark:bg-red-900/40 dark:text-red-400">
+                      <div class="text-center mt-2.5">
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-red-100/80 text-red-700 font-medium dark:bg-red-900/50 dark:text-red-300 border border-red-200/50 dark:border-red-800/50 shadow-sm">
                           Skipped
                         </span>
                       </div>
@@ -833,8 +867,8 @@ defmodule CheckDayWeb.DashboardLive do
                 <%= if @open_day_menu == day do %>
                   <div
                     class={[
-                      "absolute top-8 right-0 z-20",
-                      "bg-white rounded-xl shadow-xl border border-gray-200 p-1.5 w-48 dark:bg-gray-800 dark:border-gray-700",
+                      "absolute top-12 right-2 z-30",
+                      "bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl border border-gray-200/60 p-1.5 w-52 dark:bg-gray-800/90 dark:border-gray-700/60",
                       "animate-[slideIn_0.15s_ease-out]"
                     ]}
                     id={"day-menu-#{day}"}
@@ -845,60 +879,70 @@ defmodule CheckDayWeb.DashboardLive do
                       phx-click="skip_date"
                       phx-value-date={Date.to_iso8601(day)}
                       class={[
-                        "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-sm cursor-pointer",
-                        "transition-all duration-150",
+                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left text-sm cursor-pointer",
+                        "transition-all duration-200",
                         if(is_date_skipped,
                           do:
-                            "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/40",
+                            "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/60",
                           else:
-                            "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                            "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700/50"
                         )
                       ]}
                       id={"skip-date-#{day}"}
                     >
                       <.icon
-                        name={if(is_date_skipped, do: "hero-arrow-uturn-left", else: "hero-calendar")}
+                        name={
+                          if(is_date_skipped,
+                            do: "hero-arrow-uturn-left",
+                            else: "hero-calendar-solid"
+                          )
+                        }
                         class="w-4 h-4 shrink-0"
                       />
                       <div>
                         <p class="font-medium leading-tight">
-                          {if is_date_skipped, do: "Unskip this date", else: "Skip this date"}
+                          {if is_date_skipped, do: "Unskip date", else: "Skip this date"}
                         </p>
-                        <p class="text-[10px] opacity-60 leading-tight mt-0.5">
+                        <p class="text-[10px] opacity-70 leading-tight mt-0.5">
                           {Calendar.strftime(day, "%b %d")} only
                         </p>
                       </div>
                     </button>
 
-                    <div class="h-px bg-gray-100 dark:bg-gray-700 mx-2 my-1" />
+                    <div class="h-px bg-gray-100 dark:bg-gray-700/50 mx-2 my-1" />
 
                     <%!-- Toggle this day every week --%>
                     <button
                       phx-click="toggle_weekly_day"
                       phx-value-day={Date.day_of_week(day)}
                       class={[
-                        "flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-sm cursor-pointer",
-                        "transition-all duration-150",
+                        "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-left text-sm cursor-pointer",
+                        "transition-all duration-200",
                         if(is_weekly_off,
                           do:
-                            "bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-400 dark:hover:bg-orange-900/40",
+                            "bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-950/40 dark:text-orange-400 dark:hover:bg-orange-900/60",
                           else:
-                            "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                            "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700/50"
                         )
                       ]}
                       id={"toggle-weekly-#{day}"}
                     >
                       <.icon
-                        name={if(is_weekly_off, do: "hero-arrow-uturn-left", else: "hero-arrow-path")}
+                        name={
+                          if(is_weekly_off,
+                            do: "hero-arrow-uturn-left",
+                            else: "hero-arrow-path-rounded-square"
+                          )
+                        }
                         class="w-4 h-4 shrink-0"
                       />
                       <div>
                         <p class="font-medium leading-tight">
                           {if is_weekly_off,
                             do: "Enable #{full_day_name(day)}s",
-                            else: "Skip every #{full_day_name(day)}"}
+                            else: "Skip #{full_day_name(day)}s"}
                         </p>
-                        <p class="text-[10px] opacity-60 leading-tight mt-0.5">
+                        <p class="text-[10px] opacity-70 leading-tight mt-0.5">
                           Recurring weekly
                         </p>
                       </div>
@@ -907,17 +951,20 @@ defmodule CheckDayWeb.DashboardLive do
                 <% end %>
 
                 <%!-- Digest Blocks --%>
-                <div class="p-2 flex-1 space-y-1.5 overflow-y-auto" id={"day-blocks-#{day}"}>
+                <div
+                  class="p-3 flex-1 space-y-2 overflow-y-auto relative z-10"
+                  id={"day-blocks-#{day}"}
+                >
                   <%= if is_disabled do %>
                     <div class="flex flex-col items-center justify-center h-full text-gray-300 dark:text-gray-600">
-                      <.icon name="hero-no-symbol" class="w-6 h-6 mb-1 opacity-40" />
-                      <p class="text-[10px]">Day off</p>
+                      <.icon name="hero-moon-solid" class="w-6 h-6 mb-2 opacity-50" />
+                      <p class="text-[11px] font-medium uppercase tracking-wider">Day off</p>
                     </div>
                   <% else %>
                     <%= if @blocks == [] do %>
                       <div class="flex flex-col items-center justify-center h-full text-gray-300 dark:text-gray-600">
-                        <.icon name="hero-inbox" class="w-6 h-6 mb-1 opacity-40" />
-                        <p class="text-[10px]">No blocks</p>
+                        <.icon name="hero-inbox-solid" class="w-6 h-6 mb-2 opacity-50" />
+                        <p class="text-[11px] font-medium uppercase tracking-wider">No blocks</p>
                       </div>
                     <% else %>
                       <%= for block <- @blocks do %>
@@ -927,12 +974,12 @@ defmodule CheckDayWeb.DashboardLive do
                           phx-value-block-id={block.id}
                           phx-value-day={Date.day_of_week(day)}
                           class={[
-                            "flex items-center gap-2 p-2 rounded-lg border w-full text-left",
-                            "transition-all duration-200 group/block cursor-pointer",
+                            "flex items-center gap-2.5 p-2 rounded-xl border w-full text-left",
+                            "transition-all duration-300 group/block cursor-pointer",
                             if(is_block_active,
-                              do: ["hover:shadow-sm", type_bg(block.type)],
+                              do: ["hover:scale-[1.02]", type_bg(block.type)],
                               else:
-                                "bg-gray-50 border-gray-200 opacity-40 hover:opacity-60 dark:bg-gray-800 dark:border-gray-700"
+                                "bg-gray-50/50 border-gray-200/50 opacity-40 hover:opacity-70 dark:bg-gray-800/30 dark:border-gray-700/50 hover:scale-[1.02]"
                             )
                           ]}
                           id={"block-#{block.id}-#{day}"}
@@ -947,7 +994,7 @@ defmodule CheckDayWeb.DashboardLive do
                             <.icon name={type_icon(block.type)} class="w-4 h-4" />
                           </div>
                           <span class={[
-                            "text-xs font-medium truncate flex-1",
+                            "text-xs font-semibold truncate flex-1 tracking-tight",
                             if(is_block_active,
                               do: type_label_color(block.type),
                               else: "text-gray-400 line-through"
@@ -965,21 +1012,23 @@ defmodule CheckDayWeb.DashboardLive do
           </div>
 
           <%!-- Block Management --%>
-          <div class="mt-8" id="block-management">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Digest Blocks</h2>
+          <div class="mt-12 relative z-10" id="block-management">
+            <div class="flex items-center justify-between mb-8">
+              <h2 class="text-2xl font-black tracking-tight text-gray-900 dark:text-white">
+                Digest Blocks
+              </h2>
               <button
                 phx-click="toggle_add_form"
                 class={[
-                  "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium",
-                  "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800",
-                  "hover:bg-indigo-100 hover:border-indigo-300 dark:hover:bg-indigo-900/50 dark:hover:border-indigo-700",
-                  "transition-all duration-200"
+                  "inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold shadow-sm",
+                  "bg-white/80 text-gray-700 border border-gray-200/60 dark:bg-gray-800/80 dark:text-gray-200 dark:border-gray-700/60 backdrop-blur-md",
+                  "hover:shadow-md hover:border-[oklch(70%_0.213_47.604)]/40 dark:hover:border-[oklch(70%_0.213_47.604)]/40 hover:-translate-y-0.5 hover:text-[oklch(70%_0.213_47.604)] dark:hover:text-[oklch(75%_0.213_47.604)]",
+                  "transition-all duration-300"
                 ]}
                 id="toggle-add-form-btn"
               >
                 <.icon
-                  name={if(@show_add_form, do: "hero-x-mark", else: "hero-plus")}
+                  name={if(@show_add_form, do: "hero-x-mark-solid", else: "hero-plus-solid")}
                   class="w-4 h-4"
                 />
                 {if @show_add_form, do: "Cancel", else: "Add Block"}
@@ -988,35 +1037,47 @@ defmodule CheckDayWeb.DashboardLive do
 
             <%= if @show_add_form do %>
               <div
-                class="mb-6 p-5 rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20"
+                class="mb-8 p-6 sm:p-8 rounded-3xl border border-[oklch(70%_0.213_47.604)]/20 bg-white/70 shadow-2xl shadow-[oklch(70%_0.213_47.604)]/5 backdrop-blur-xl dark:border-[oklch(70%_0.213_47.604)]/30 dark:bg-gray-900/70"
                 id="add-block-form"
               >
-                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">New Block</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <.icon
+                    name="hero-squares-plus-solid"
+                    class="w-5 h-5 text-[oklch(70%_0.213_47.604)] dark:text-[oklch(75%_0.213_47.604)]"
+                  /> New Block
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                   <div>
-                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                       Type
                     </label>
-                    <select
-                      phx-change="update_add_type"
-                      name="type"
-                      id="add-block-type"
-                      class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
-                    >
-                      <option value="weather" selected={@add_type == "weather"}>☀️ Weather</option>
-                      <option value="news" selected={@add_type == "news"}>📰 News</option>
-                      <option value="interest" selected={@add_type == "interest"}>✨ Interest</option>
-                      <option value="competitor" selected={@add_type == "competitor"}>
-                        🏢 Competitor
-                      </option>
-                      <option value="stock" selected={@add_type == "stock"}>📈 Stock</option>
-                      <option value="agenda" selected={@add_type == "agenda"}>📅 Agenda</option>
-                      <option value="habit" selected={@add_type == "habit"}>✅ Habit</option>
-                      <option value="custom" selected={@add_type == "custom"}>🧩 Custom</option>
-                    </select>
+                    <form phx-change="update_add_type" class="relative">
+                      <select
+                        name="type"
+                        id="add-block-type"
+                        class="w-full appearance-none rounded-xl border border-gray-200/80 bg-white/50 px-4 py-2.5 text-sm font-medium text-gray-800 shadow-sm focus:ring-2 focus:ring-[oklch(70%_0.213_47.604)]/50 focus:border-[oklch(70%_0.213_47.604)] dark:bg-gray-800/50 dark:border-gray-700/80 dark:text-gray-200 backdrop-blur-sm transition-all outline-none"
+                      >
+                        <option value="weather" selected={@add_type == "weather"}>☀️ Weather</option>
+                        <option value="news" selected={@add_type == "news"}>📰 News</option>
+                        <option value="interest" selected={@add_type == "interest"}>
+                          ✨ Interest
+                        </option>
+                        <option value="competitor" selected={@add_type == "competitor"}>
+                          🏢 Competitor
+                        </option>
+                        <option value="stock" selected={@add_type == "stock"}>📈 Stock</option>
+                        <option value="agenda" selected={@add_type == "agenda"}>📅 Agenda</option>
+                        <option value="habit" selected={@add_type == "habit"}>✅ Habit</option>
+                        <option value="custom" selected={@add_type == "custom"}>🧩 Custom</option>
+                      </select>
+                      <.icon
+                        name="hero-chevron-down"
+                        class="w-4 h-4 absolute right-3 top-3 text-gray-500 pointer-events-none"
+                      />
+                    </form>
                   </div>
-                  <div>
-                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  <div class="sm:col-span-2">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                       Label
                     </label>
                     <input
@@ -1027,75 +1088,80 @@ defmodule CheckDayWeb.DashboardLive do
                       name="label"
                       id="add-block-label"
                       placeholder="e.g. Amsterdam Weather"
-                      class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
+                      class="w-full rounded-xl border border-gray-200/80 bg-white/50 px-4 py-2.5 text-sm font-medium text-gray-800 placeholder-gray-400 shadow-sm focus:ring-2 focus:ring-[oklch(70%_0.213_47.604)]/50 focus:border-[oklch(70%_0.213_47.604)] dark:bg-gray-800/50 dark:border-gray-700/80 dark:text-gray-200 dark:placeholder-gray-500 backdrop-blur-sm transition-all outline-none"
                     />
                   </div>
                 </div>
                 <%!-- Config Key/Value Rows --%>
-                <div class="mt-4">
-                  <div class="flex items-center justify-between mb-2">
-                    <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">
-                      Config <span class="text-gray-400 dark:text-gray-500">(optional)</span>
+                <div class="mt-6">
+                  <div class="flex items-center justify-between mb-3 border-b border-gray-100 dark:border-gray-800/50 pb-2">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Configuration
+                      <span class="text-gray-400 dark:text-gray-600 font-normal normal-case tracking-normal ml-1">
+                        (Optional rules)
+                      </span>
                     </label>
                     <button
                       phx-click="add_config_row"
                       type="button"
-                      class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400 dark:hover:text-indigo-300"
+                      class="text-xs text-[oklch(70%_0.213_47.604)] hover:text-[oklch(60%_0.213_47.604)] font-bold transition-colors dark:text-[oklch(75%_0.213_47.604)] flex items-center gap-1"
                       id="add-config-row-btn"
                     >
-                      + Add field
+                      <.icon name="hero-plus" class="w-3.5 h-3.5" /> Add Field
                     </button>
                   </div>
-                  <%= for {row, idx} <- Enum.with_index(@add_config_rows) do %>
-                    <div class="flex items-center gap-2 mb-2" id={"add-config-row-#{idx}"}>
-                      <input
-                        type="text"
-                        value={row.key}
-                        phx-keyup="update_add_config_key"
-                        phx-value-index={idx}
-                        phx-key=""
-                        placeholder="key"
-                        id={"add-config-key-#{idx}"}
-                        class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
-                      />
-                      <input
-                        type="text"
-                        value={row.value}
-                        phx-keyup="update_add_config_value"
-                        phx-value-index={idx}
-                        phx-key=""
-                        placeholder="value"
-                        id={"add-config-val-#{idx}"}
-                        class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
-                      />
-                      <button
-                        phx-click="remove_add_config_row"
-                        phx-value-index={idx}
-                        type="button"
-                        class="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                        id={"remove-add-config-#{idx}"}
-                      >
-                        <.icon name="hero-x-mark" class="w-4 h-4" />
-                      </button>
-                    </div>
-                  <% end %>
+                  <div class="space-y-2 mt-3">
+                    <%= for {row, idx} <- Enum.with_index(@add_config_rows) do %>
+                      <div class="flex items-center gap-3" id={"add-config-row-#{idx}"}>
+                        <input
+                          type="text"
+                          value={row.key}
+                          phx-keyup="update_add_config_key"
+                          phx-value-index={idx}
+                          phx-key=""
+                          placeholder="Key (e.g. topic)"
+                          id={"add-config-key-#{idx}"}
+                          class="flex-1 rounded-xl border border-gray-200/80 bg-white/50 px-4 py-2 text-sm font-medium text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-[oklch(70%_0.213_47.604)]/50 focus:border-[oklch(70%_0.213_47.604)] dark:bg-gray-800/50 dark:border-gray-700/80 dark:text-gray-200 backdrop-blur-sm transition-all outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={row.value}
+                          phx-keyup="update_add_config_value"
+                          phx-value-index={idx}
+                          phx-key=""
+                          placeholder="Value (e.g. AI News)"
+                          id={"add-config-val-#{idx}"}
+                          class="flex-[2] rounded-xl border border-gray-200/80 bg-white/50 px-4 py-2 text-sm font-medium text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-[oklch(70%_0.213_47.604)]/50 focus:border-[oklch(70%_0.213_47.604)] dark:bg-gray-800/50 dark:border-gray-700/80 dark:text-gray-200 backdrop-blur-sm transition-all outline-none"
+                        />
+                        <button
+                          phx-click="remove_add_config_row"
+                          phx-value-index={idx}
+                          type="button"
+                          class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                          id={"remove-add-config-#{idx}"}
+                        >
+                          <.icon name="hero-trash-solid" class="w-4 h-4" />
+                        </button>
+                      </div>
+                    <% end %>
+                  </div>
                 </div>
-                <div class="mt-4 flex justify-end">
+                <div class="mt-8 flex justify-end">
                   <button
                     phx-click="add_block"
                     disabled={@add_label == ""}
                     class={[
-                      "inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                      "inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold transition-all duration-300 shadow-md",
                       if(@add_label == "",
                         do:
-                          "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500",
+                          "bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-600 shadow-none",
                         else:
-                          "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                          "bg-gradient-to-r from-[oklch(70%_0.213_47.604)] to-orange-500 text-white hover:shadow-lg hover:shadow-[oklch(70%_0.213_47.604)]/20 hover:-translate-y-0.5"
                       )
                     ]}
                     id="submit-add-block-btn"
                   >
-                    <.icon name="hero-plus" class="w-4 h-4" /> Add
+                    <.icon name="hero-plus-circle-solid" class="w-5 h-5" /> Add Block
                   </button>
                 </div>
               </div>
@@ -1103,65 +1169,85 @@ defmodule CheckDayWeb.DashboardLive do
 
             <%= if @blocks == [] do %>
               <div
-                class="text-center py-12 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700"
+                class="flex flex-col items-center justify-center py-20 px-4 rounded-3xl border-2 border-dashed border-gray-200/60 bg-white/40 backdrop-blur-sm dark:border-gray-800/60 dark:bg-gray-900/30"
                 id="empty-state"
               >
-                <.icon
-                  name="hero-inbox"
-                  class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4"
-                />
-                <h3 class="text-lg font-semibold text-gray-600 dark:text-gray-300 mb-2">
+                <div class="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                  <.icon
+                    name="hero-inbox-solid"
+                    class="w-10 h-10 text-gray-300 dark:text-gray-600"
+                  />
+                </div>
+                <h3 class="text-xl font-bold text-gray-700 dark:text-gray-200 mb-2 tracking-tight">
                   No digest blocks yet
                 </h3>
-                <p class="text-gray-400 dark:text-gray-500">
-                  Click "Add Block" above to build your daily digest
+                <p class="text-gray-500 dark:text-gray-400 max-w-sm text-center font-medium">
+                  Click <span class="text-gray-700 dark:text-gray-300">"Add Block"</span>
+                  above to start assembling your perfect morning routine.
                 </p>
               </div>
             <% else %>
               <div
-                class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
+                class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
                 id="block-list"
               >
                 <%= for block <- @blocks do %>
                   <%= if @editing_block_id == block.id do %>
                     <div
-                      class="rounded-xl border border-indigo-200 bg-indigo-50/30 dark:border-indigo-800 dark:bg-indigo-950/20 p-5 col-span-full"
+                      class="rounded-3xl border border-[oklch(70%_0.213_47.604)]/30 bg-white/80 shadow-2xl backdrop-blur-xl dark:border-[oklch(70%_0.213_47.604)]/40 dark:bg-gray-900/80 p-6 sm:p-8 col-span-full ring-2 ring-[oklch(70%_0.213_47.604)]/10 animate-[fadeIn_0.2s_ease-out] relative overflow-hidden"
                       id={"manage-block-#{block.id}"}
                     >
-                      <div class="space-y-3">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div class="absolute -right-10 -top-10 w-40 h-40 bg-[oklch(70%_0.213_47.604)]/10 blur-[50px] rounded-full pointer-events-none">
+                      </div>
+                      <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 relative z-10">
+                        <.icon
+                          name="hero-pencil-square-solid"
+                          class="w-5 h-5 text-[oklch(70%_0.213_47.604)]"
+                        /> Edit Block
+                      </h3>
+                      <div class="space-y-6 relative z-10">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                           <div>
-                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                               Type
                             </label>
-                            <select
-                              phx-change="update_edit_type"
-                              name="type"
-                              id={"edit-type-#{block.id}"}
-                              class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
-                            >
-                              <option value="weather" selected={@edit_type == "weather"}>
-                                ☀️ Weather
-                              </option>
-                              <option value="news" selected={@edit_type == "news"}>📰 News</option>
-                              <option value="interest" selected={@edit_type == "interest"}>
-                                ✨ Interest
-                              </option>
-                              <option value="competitor" selected={@edit_type == "competitor"}>
-                                🏢 Competitor
-                              </option>
-                              <option value="stock" selected={@edit_type == "stock"}>📈 Stock</option>
-                              <option value="agenda" selected={@edit_type == "agenda"}>
-                                📅 Agenda
-                              </option>
-                              <option value="habit" selected={@edit_type == "habit"}>✅ Habit</option>
-                              <option value="custom" selected={@edit_type == "custom"}>
-                                🧩 Custom
-                              </option>
-                            </select>
+                            <form phx-change="update_edit_type" class="relative">
+                              <select
+                                name="type"
+                                id={"edit-type-#{block.id}"}
+                                class="w-full appearance-none rounded-xl border border-gray-200/80 bg-white/50 px-4 py-2.5 text-sm font-medium text-gray-800 shadow-sm focus:ring-2 focus:ring-[oklch(70%_0.213_47.604)]/50 focus:border-[oklch(70%_0.213_47.604)] dark:bg-gray-800/50 dark:border-gray-700/80 dark:text-gray-200 backdrop-blur-sm transition-all outline-none"
+                              >
+                                <option value="weather" selected={@edit_type == "weather"}>
+                                  ☀️ Weather
+                                </option>
+                                <option value="news" selected={@edit_type == "news"}>📰 News</option>
+                                <option value="interest" selected={@edit_type == "interest"}>
+                                  ✨ Interest
+                                </option>
+                                <option value="competitor" selected={@edit_type == "competitor"}>
+                                  🏢 Competitor
+                                </option>
+                                <option value="stock" selected={@edit_type == "stock"}>
+                                  📈 Stock
+                                </option>
+                                <option value="agenda" selected={@edit_type == "agenda"}>
+                                  📅 Agenda
+                                </option>
+                                <option value="habit" selected={@edit_type == "habit"}>
+                                  ✅ Habit
+                                </option>
+                                <option value="custom" selected={@edit_type == "custom"}>
+                                  🧩 Custom
+                                </option>
+                              </select>
+                              <.icon
+                                name="hero-chevron-down"
+                                class="w-4 h-4 absolute right-3 top-3 text-gray-500 pointer-events-none"
+                              />
+                            </form>
                           </div>
-                          <div>
-                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          <div class="sm:col-span-2">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                               Label
                             </label>
                             <input
@@ -1171,75 +1257,77 @@ defmodule CheckDayWeb.DashboardLive do
                               phx-key=""
                               name="label"
                               id={"edit-label-#{block.id}"}
-                              class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:focus:ring-indigo-800 dark:focus:border-indigo-700"
+                              class="w-full rounded-xl border border-gray-200/80 bg-white/50 px-4 py-2.5 text-sm font-medium text-gray-800 placeholder-gray-400 shadow-sm focus:ring-2 focus:ring-[oklch(70%_0.213_47.604)]/50 focus:border-[oklch(70%_0.213_47.604)] dark:bg-gray-800/50 dark:border-gray-700/80 dark:text-gray-200 dark:placeholder-gray-500 backdrop-blur-sm transition-all outline-none"
                             />
                           </div>
                         </div>
                         <div>
-                          <div class="flex items-center justify-between mb-1">
-                            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400">
-                              Config
+                          <div class="flex items-center justify-between mb-3 border-b border-gray-100 dark:border-gray-800/50 pb-2">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                              Configuration
                             </label>
                             <button
                               phx-click="add_edit_config_row"
                               type="button"
-                              class="text-xs text-indigo-600 hover:text-indigo-700 font-medium dark:text-indigo-400"
+                              class="text-xs text-[oklch(70%_0.213_47.604)] hover:text-[oklch(60%_0.213_47.604)] font-bold transition-colors dark:text-[oklch(75%_0.213_47.604)] flex items-center gap-1"
                               id={"add-edit-config-row-#{block.id}"}
                             >
-                              + Add field
+                              <.icon name="hero-plus" class="w-3.5 h-3.5" /> Add Field
                             </button>
                           </div>
-                          <%= for {row, idx} <- Enum.with_index(@edit_config_rows) do %>
-                            <div
-                              class="flex items-center gap-2 mb-2"
-                              id={"edit-config-row-#{block.id}-#{idx}"}
-                            >
-                              <input
-                                type="text"
-                                value={row.key}
-                                phx-keyup="update_edit_config_key"
-                                phx-value-index={idx}
-                                phx-key=""
-                                placeholder="key"
-                                id={"edit-config-key-#{block.id}-#{idx}"}
-                                class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
-                              />
-                              <input
-                                type="text"
-                                value={row.value}
-                                phx-keyup="update_edit_config_value"
-                                phx-value-index={idx}
-                                phx-key=""
-                                placeholder="value"
-                                id={"edit-config-val-#{block.id}-#{idx}"}
-                                class="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 placeholder-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200 dark:placeholder-gray-500"
-                              />
-                              <button
-                                phx-click="remove_edit_config_row"
-                                phx-value-index={idx}
-                                type="button"
-                                class="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                                id={"remove-edit-config-#{block.id}-#{idx}"}
+                          <div class="space-y-2 mt-3">
+                            <%= for {row, idx} <- Enum.with_index(@edit_config_rows) do %>
+                              <div
+                                class="flex items-center gap-3"
+                                id={"edit-config-row-#{block.id}-#{idx}"}
                               >
-                                <.icon name="hero-x-mark" class="w-4 h-4" />
-                              </button>
-                            </div>
-                          <% end %>
+                                <input
+                                  type="text"
+                                  value={row.key}
+                                  phx-keyup="update_edit_config_key"
+                                  phx-value-index={idx}
+                                  phx-key=""
+                                  placeholder="Key"
+                                  id={"edit-config-key-#{block.id}-#{idx}"}
+                                  class="flex-1 rounded-xl border border-gray-200/80 bg-white/50 px-4 py-2 text-sm font-medium text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-[oklch(70%_0.213_47.604)]/50 focus:border-[oklch(70%_0.213_47.604)] dark:bg-gray-800/50 dark:border-gray-700/80 dark:text-gray-200 backdrop-blur-sm transition-all outline-none"
+                                />
+                                <input
+                                  type="text"
+                                  value={row.value}
+                                  phx-keyup="update_edit_config_value"
+                                  phx-value-index={idx}
+                                  phx-key=""
+                                  placeholder="Value"
+                                  id={"edit-config-val-#{block.id}-#{idx}"}
+                                  class="flex-[2] rounded-xl border border-gray-200/80 bg-white/50 px-4 py-2 text-sm font-medium text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-[oklch(70%_0.213_47.604)]/50 focus:border-[oklch(70%_0.213_47.604)] dark:bg-gray-800/50 dark:border-gray-700/80 dark:text-gray-200 backdrop-blur-sm transition-all outline-none"
+                                />
+                                <button
+                                  phx-click="remove_edit_config_row"
+                                  phx-value-index={idx}
+                                  type="button"
+                                  class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                  id={"remove-edit-config-#{block.id}-#{idx}"}
+                                >
+                                  <.icon name="hero-trash-solid" class="w-4 h-4" />
+                                </button>
+                              </div>
+                            <% end %>
+                          </div>
                         </div>
-                        <div class="flex gap-2 justify-end">
+                        <div class="flex gap-3 justify-end mt-4 pt-4 border-t border-gray-100 dark:border-gray-800/50">
                           <button
                             phx-click="cancel_edit"
-                            class="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                            class="px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700"
                             id={"cancel-edit-#{block.id}"}
                           >
                             Cancel
                           </button>
                           <button
                             phx-click="save_edit"
-                            class="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-all dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                            class="px-8 py-2.5 rounded-full text-sm font-bold text-white bg-gradient-to-r from-[oklch(70%_0.213_47.604)] to-orange-500 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all"
                             id={"save-edit-#{block.id}"}
                           >
-                            Save
+                            Save Changes
                           </button>
                         </div>
                       </div>
@@ -1247,49 +1335,55 @@ defmodule CheckDayWeb.DashboardLive do
                   <% else %>
                     <div
                       class={[
-                        "rounded-xl border p-4 transition-all duration-200",
+                        "rounded-3xl border p-5 transition-all duration-300 group/block relative overflow-hidden",
+                        "hover:-translate-y-1 hover:shadow-xl",
                         type_bg(block.type)
                       ]}
                       id={"manage-block-#{block.id}"}
                     >
-                      <div class="flex items-start gap-3">
+                      <div class="absolute inset-0 bg-white/30 dark:bg-white/5 opacity-0 group-hover/block:opacity-100 transition-opacity duration-300 pointer-events-none">
+                      </div>
+                      <div class="flex items-start gap-4 relative z-10">
                         <div class={["shrink-0 mt-0.5", type_icon_color(block.type)]}>
-                          <.icon name={type_icon(block.type)} class="w-5 h-5" />
+                          <.icon name={type_icon(block.type)} class="w-7 h-7 drop-shadow-sm" />
                         </div>
                         <div class="flex-1 min-w-0">
-                          <p class={["font-medium text-sm truncate", type_label_color(block.type)]}>
+                          <p class={[
+                            "font-bold text-base truncate tracking-tight mb-0.5",
+                            type_label_color(block.type)
+                          ]}>
                             {block.label}
                           </p>
-                          <p class="text-xs text-gray-500 dark:text-gray-400 capitalize mt-0.5">
+                          <p class="text-[11px] font-bold uppercase tracking-wider text-opacity-70 dark:text-opacity-70 mb-2">
                             {block.type}
                           </p>
                           <%= if block.config && block.config != %{} do %>
-                            <div class="mt-1.5 flex flex-wrap gap-1">
+                            <div class="flex flex-wrap gap-1.5">
                               <%= for {k, v} <- block.config do %>
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-black/5 text-black/60 dark:bg-white/10 dark:text-white/70 border border-black/5 dark:border-white/5 backdrop-blur-sm">
                                   {k}: {v}
                                 </span>
                               <% end %>
                             </div>
                           <% end %>
                         </div>
-                        <div class="flex items-center gap-1 shrink-0">
+                        <div class="flex flex-col sm:flex-row items-center gap-1.5 shrink-0 opacity-0 group-hover/block:opacity-100 transition-opacity duration-200">
                           <button
                             phx-click="start_edit"
                             phx-value-block-id={block.id}
-                            class="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all dark:hover:text-indigo-400 dark:hover:bg-indigo-950/40"
+                            class="p-2 rounded-xl text-gray-500 bg-white/50 hover:text-[oklch(70%_0.213_47.604)] hover:bg-white shadow-sm transition-all dark:bg-gray-800/50 dark:hover:bg-gray-800 dark:hover:text-[oklch(75%_0.213_47.604)]"
                             id={"edit-btn-#{block.id}"}
                           >
-                            <.icon name="hero-pencil-square" class="w-4 h-4" />
+                            <.icon name="hero-pencil-solid" class="w-4 h-4" />
                           </button>
                           <button
                             phx-click="delete_block"
                             phx-value-block-id={block.id}
                             data-confirm="Remove this block from your digest?"
-                            class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all dark:hover:text-red-400 dark:hover:bg-red-950/40"
+                            class="p-2 rounded-xl text-gray-500 bg-white/50 hover:text-red-500 hover:bg-white shadow-sm transition-all dark:bg-gray-800/50 dark:hover:bg-gray-800 dark:hover:text-red-400"
                             id={"delete-btn-#{block.id}"}
                           >
-                            <.icon name="hero-trash" class="w-4 h-4" />
+                            <.icon name="hero-trash-solid" class="w-4 h-4" />
                           </button>
                         </div>
                       </div>
@@ -1302,7 +1396,7 @@ defmodule CheckDayWeb.DashboardLive do
         <% end %>
 
         <%!-- Floating Voice Assistant --%>
-        <div id="voice-assistant-container">
+        <div id="voice-assistant-container" class="relative z-50">
           <%!-- ElevenLabs Hook (hidden, for managing the conversation) --%>
           <div
             id="dashboard-elevenlabs-hook"
@@ -1317,18 +1411,18 @@ defmodule CheckDayWeb.DashboardLive do
               phx-click="toggle_voice_panel"
               class={[
                 "fixed bottom-8 right-8 z-50 w-16 h-16 rounded-full flex items-center justify-center cursor-pointer",
-                "bg-gradient-to-br from-indigo-500 to-purple-600 text-white",
-                "hover:from-indigo-600 hover:to-purple-700 hover:scale-110",
-                "transition-all duration-300 shadow-xl shadow-indigo-300/40 dark:shadow-indigo-900/40",
-                "focus:outline-none focus:ring-4 focus:ring-indigo-200 dark:focus:ring-indigo-800",
+                "bg-gradient-to-br from-[oklch(70%_0.213_47.604)] to-orange-500 text-white",
+                "hover:scale-110",
+                "transition-all duration-300 shadow-2xl shadow-[oklch(70%_0.213_47.604)]/40 dark:shadow-[oklch(70%_0.213_47.604)]/30",
+                "focus:outline-none focus:ring-4 focus:ring-[oklch(70%_0.213_47.604)]/50",
                 "group",
                 @needs_onboarding &&
-                  "ring-4 ring-indigo-300 ring-offset-2 dark:ring-indigo-700 dark:ring-offset-gray-900 animate-pulse"
+                  "ring-4 ring-[oklch(70%_0.213_47.604)]/30 ring-offset-2 dark:ring-offset-gray-900 animate-pulse"
               ]}
               id="voice-fab-btn"
             >
               <.icon
-                name="hero-microphone"
+                name="hero-microphone-solid"
                 class="w-7 h-7 group-hover:scale-110 transition-transform"
               />
             </button>
@@ -1338,9 +1432,9 @@ defmodule CheckDayWeb.DashboardLive do
           <%= if @show_voice_panel do %>
             <div
               class={[
-                "fixed bottom-8 right-8 z-50 w-[380px] rounded-2xl overflow-hidden",
-                "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700",
-                "shadow-2xl shadow-gray-300/50 dark:shadow-black/40",
+                "fixed bottom-8 right-8 z-50 w-[380px] rounded-3xl overflow-hidden backdrop-blur-3xl",
+                "bg-white/80 dark:bg-gray-900/80 border border-gray-200/60 dark:border-gray-800/60",
+                "shadow-2xl shadow-gray-400/30 dark:shadow-black/60 ring-1 ring-white/20",
                 "animate-[slideUp_0.3s_ease-out]"
               ]}
               id="voice-panel"
@@ -1350,65 +1444,68 @@ defmodule CheckDayWeb.DashboardLive do
                 "px-5 py-4 border-b flex items-center justify-between",
                 if(@conversation_status in [:connected, :speaking, :listening],
                   do:
-                    "border-indigo-200 bg-indigo-50/50 dark:border-indigo-800 dark:bg-indigo-950/30",
-                  else: "border-gray-100 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/50"
+                    "border-[oklch(70%_0.213_47.604)]/30 bg-[oklch(70%_0.213_47.604)]/10 dark:border-[oklch(70%_0.213_47.604)]/30 dark:bg-[oklch(70%_0.213_47.604)]/10",
+                  else: "border-gray-100 bg-gray-50/50 dark:border-gray-800/50 dark:bg-gray-800/50"
                 )
               ]}>
-                <div class="flex items-center gap-2.5">
+                <div class="flex items-center gap-3">
                   <div class={[
-                    "w-2.5 h-2.5 rounded-full",
+                    "w-3 h-3 rounded-full shadow-sm",
                     if(@conversation_status in [:connected, :speaking, :listening],
-                      do: "bg-indigo-500 animate-pulse",
-                      else: "bg-gray-400"
+                      do:
+                        "bg-[oklch(70%_0.213_47.604)] animate-pulse shadow-[oklch(70%_0.213_47.604)]/50",
+                      else: "bg-gray-400 dark:bg-gray-600"
                     )
                   ]} />
-                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <span class="text-sm font-bold tracking-tight text-gray-800 dark:text-gray-200">
                     {status_text(@conversation_status)}
                   </span>
                 </div>
                 <button
                   phx-click="toggle_voice_panel"
-                  class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:text-gray-300 dark:hover:bg-gray-700 transition-all"
+                  class="p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-200/50 dark:hover:text-gray-300 dark:hover:bg-gray-700/50 transition-all"
                   id="close-voice-panel-btn"
                 >
-                  <.icon name="hero-x-mark" class="w-5 h-5" />
+                  <.icon name="hero-x-mark-solid" class="w-5 h-5" />
                 </button>
               </div>
 
               <%!-- Mic Control --%>
-              <div class="flex flex-col items-center py-6">
+              <div class="flex flex-col items-center py-8 relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/5 dark:to-white/5 pointer-events-none">
+                </div>
                 <%= if @conversation_status == :idle do %>
                   <button
                     phx-click="start_conversation"
                     class={[
-                      "w-20 h-20 rounded-full flex items-center justify-center cursor-pointer",
-                      "bg-gradient-to-br from-indigo-500 to-purple-600 text-white",
-                      "hover:from-indigo-600 hover:to-purple-700 hover:scale-105",
-                      "transition-all duration-200 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30",
-                      "focus:outline-none focus:ring-4 focus:ring-indigo-200 dark:focus:ring-indigo-800"
+                      "w-24 h-24 rounded-full flex items-center justify-center cursor-pointer relative z-10",
+                      "bg-gradient-to-br from-[oklch(70%_0.213_47.604)] to-orange-500 text-white",
+                      "hover:scale-105",
+                      "transition-all duration-300 shadow-xl shadow-[oklch(70%_0.213_47.604)]/30 dark:shadow-[oklch(70%_0.213_47.604)]/20",
+                      "focus:outline-none focus:ring-4 focus:ring-[oklch(70%_0.213_47.604)]/40"
                     ]}
                     id="dashboard-start-conversation-btn"
                   >
-                    <.icon name="hero-microphone" class="w-9 h-9" />
+                    <.icon name="hero-microphone-solid" class="w-10 h-10" />
                   </button>
                 <% else %>
                   <button
                     phx-click="end_conversation"
                     class={[
-                      "w-20 h-20 rounded-full flex items-center justify-center cursor-pointer",
+                      "w-24 h-24 rounded-full flex items-center justify-center cursor-pointer relative z-10",
                       "bg-gradient-to-br from-red-500 to-rose-600 text-white",
                       "hover:from-red-600 hover:to-rose-700 hover:scale-105",
-                      "transition-all duration-200 shadow-lg shadow-red-200 dark:shadow-red-900/30",
+                      "transition-all duration-300 shadow-xl shadow-red-500/30 dark:shadow-red-900/40",
                       "focus:outline-none focus:ring-4 focus:ring-red-200 dark:focus:ring-red-800"
                     ]}
                     id="dashboard-end-conversation-btn"
                   >
-                    <.icon name="hero-stop" class="w-9 h-9" />
+                    <.icon name="hero-stop-solid" class="w-10 h-10" />
                   </button>
                 <% end %>
-                <p class="text-xs text-gray-400 dark:text-gray-500 mt-3">
+                <p class="text-[13px] font-medium text-gray-500 dark:text-gray-400 mt-5 relative z-10">
                   <%= if @conversation_status == :idle do %>
-                    Tap to talk — manage blocks & times by voice
+                    Tap to talk — adjust blocks by voice
                   <% else %>
                     Tap to stop the conversation
                   <% end %>
@@ -1417,30 +1514,39 @@ defmodule CheckDayWeb.DashboardLive do
 
               <%!-- Transcript --%>
               <div
-                class="border-t border-gray-100 dark:border-gray-700 px-4 py-3 max-h-48 overflow-y-auto"
+                class="border-t border-gray-100 dark:border-gray-800/80 px-5 py-4 max-h-56 overflow-y-auto bg-gray-50/50 dark:bg-black/20"
                 id="dashboard-transcript"
                 phx-hook=".TranscriptScroll"
               >
-                <h4 class="text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
-                  Transcript
-                </h4>
+                <div class="flex items-center gap-2 mb-3">
+                  <.icon name="hero-chat-bubble-left-right-solid" class="w-4 h-4 text-gray-400" />
+                  <h4 class="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                    Transcript
+                  </h4>
+                </div>
                 <%= if @transcript == [] do %>
-                  <p class="text-xs text-gray-400 dark:text-gray-500 italic">
+                  <p class="text-[13px] text-gray-400 dark:text-gray-500 italic text-center py-4">
                     Conversation will appear here...
                   </p>
                 <% else %>
-                  <div class="space-y-1.5">
+                  <div class="space-y-2">
                     <%= for entry <- @transcript do %>
                       <div class={[
-                        "text-xs rounded-lg px-2.5 py-1.5",
+                        "text-[13px] rounded-2xl px-3.5 py-2.5 max-w-[85%] leading-relaxed shadow-sm",
                         if(entry.source == "ai",
                           do:
-                            "bg-indigo-50 text-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-300",
-                          else: "bg-gray-50 text-gray-700 dark:bg-gray-700/50 dark:text-gray-200"
+                            "bg-white border border-gray-100 text-gray-800 mr-auto dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200",
+                          else: "bg-[oklch(70%_0.213_47.604)] text-white ml-auto"
                         )
                       ]}>
-                        <span class="font-semibold">
-                          {if entry.source == "ai", do: "Maya", else: "You"}:
+                        <span class={[
+                          "font-bold block mb-0.5 text-[10px] uppercase tracking-wider opacity-70",
+                          if(entry.source == "ai",
+                            do: "text-[oklch(70%_0.213_47.604)] dark:text-[oklch(75%_0.213_47.604)]",
+                            else: "text-white/80"
+                          )
+                        ]}>
+                          {if entry.source == "ai", do: "Maya", else: "You"}
                         </span>
                         {entry.message}
                       </div>
