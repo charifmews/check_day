@@ -725,7 +725,7 @@ defmodule CheckDayWeb.DashboardLive do
             <div class="flex items-center gap-2">
               <button
                 phx-click="prev_week"
-                class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 backdrop-blur-md dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
+                class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 cursor-pointer backdrop-blur-md dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
                 id="prev-week-btn"
               >
                 <.icon name="hero-chevron-left" class="w-5 h-5" />
@@ -733,7 +733,7 @@ defmodule CheckDayWeb.DashboardLive do
 
               <button
                 phx-click="this_week"
-                class="px-5 py-2.5 rounded-full border border-gray-200/60 bg-white/70 backdrop-blur-md text-sm font-semibold text-gray-700 shadow-sm dark:bg-gray-800/60 dark:border-gray-700/60 dark:text-gray-200 hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300"
+                class="px-5 py-2.5 rounded-full border border-gray-200/60 bg-white/70 cursor-pointerbackdrop-blur-md text-sm font-semibold text-gray-700 shadow-sm dark:bg-gray-800/60 dark:border-gray-700/60 dark:text-gray-200 hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300"
                 id="this-week-btn"
               >
                 Today
@@ -741,7 +741,7 @@ defmodule CheckDayWeb.DashboardLive do
 
               <button
                 phx-click="next_week"
-                class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 backdrop-blur-md dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
+                class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 backdrop-blur-md cursor-pointer dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
                 id="next-week-btn"
               >
                 <.icon name="hero-chevron-right" class="w-5 h-5" />
@@ -1036,7 +1036,7 @@ defmodule CheckDayWeb.DashboardLive do
               <button
                 phx-click="toggle_add_form"
                 class={[
-                  "inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold shadow-sm",
+                  "inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold shadow-sm cursor-pointer",
                   "bg-white/80 text-gray-700 border border-gray-200/60 dark:bg-gray-800/80 dark:text-gray-200 dark:border-gray-700/60 backdrop-blur-md",
                   "hover:shadow-md hover:border-[oklch(70%_0.213_47.604)]/40 dark:hover:border-[oklch(70%_0.213_47.604)]/40 hover:-translate-y-0.5 hover:text-[oklch(70%_0.213_47.604)] dark:hover:text-[oklch(75%_0.213_47.604)]",
                   "transition-all duration-300"
@@ -1153,7 +1153,7 @@ defmodule CheckDayWeb.DashboardLive do
                           phx-click="remove_add_config_row"
                           phx-value-index={idx}
                           type="button"
-                          class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                          class="p-2 cursor-pointer text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                           id={"remove-add-config-#{idx}"}
                         >
                           <.icon name="hero-trash-solid" class="w-4 h-4" />
@@ -1321,7 +1321,7 @@ defmodule CheckDayWeb.DashboardLive do
                                   phx-click="remove_edit_config_row"
                                   phx-value-index={idx}
                                   type="button"
-                                  class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                  class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all cursor-pointer"
                                   id={"remove-edit-config-#{block.id}-#{idx}"}
                                 >
                                   <.icon name="hero-trash-solid" class="w-4 h-4" />
@@ -1333,14 +1333,14 @@ defmodule CheckDayWeb.DashboardLive do
                         <div class="flex gap-3 justify-end mt-4 pt-4 border-t border-gray-100 dark:border-gray-800/50">
                           <button
                             phx-click="cancel_edit"
-                            class="px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700"
+                            class="px-5 py-2.5 rounded-full text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all dark:text-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 cursor-pointer"
                             id={"cancel-edit-#{block.id}"}
                           >
                             Cancel
                           </button>
                           <button
                             phx-click="save_edit"
-                            class="px-8 py-2.5 rounded-full text-sm font-bold text-white bg-gradient-to-r from-[oklch(70%_0.213_47.604)] to-orange-500 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                            class="px-8 py-2.5 rounded-full text-sm font-bold text-white bg-gradient-to-r from-[oklch(70%_0.213_47.604)] to-orange-500 shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer"
                             id={"save-edit-#{block.id}"}
                           >
                             Save Changes
@@ -1387,7 +1387,7 @@ defmodule CheckDayWeb.DashboardLive do
                           <button
                             phx-click="start_edit"
                             phx-value-block-id={block.id}
-                            class="p-2 rounded-xl text-gray-500 bg-white/50 hover:text-[oklch(70%_0.213_47.604)] hover:bg-white shadow-sm transition-all dark:bg-gray-800/50 dark:hover:bg-gray-800 dark:hover:text-[oklch(75%_0.213_47.604)]"
+                            class="p-2 rounded-xl text-gray-500 bg-white/50 hover:text-[oklch(70%_0.213_47.604)] hover:bg-white shadow-sm transition-all dark:bg-gray-800/50 dark:hover:bg-gray-800 dark:hover:text-[oklch(75%_0.213_47.604)] cursor-pointer"
                             id={"edit-btn-#{block.id}"}
                           >
                             <.icon name="hero-pencil-solid" class="w-4 h-4" />
@@ -1396,7 +1396,7 @@ defmodule CheckDayWeb.DashboardLive do
                             phx-click="delete_block"
                             phx-value-block-id={block.id}
                             data-confirm="Remove this block from your digest?"
-                            class="p-2 rounded-xl text-gray-500 bg-white/50 hover:text-red-500 hover:bg-white shadow-sm transition-all dark:bg-gray-800/50 dark:hover:bg-gray-800 dark:hover:text-red-400"
+                            class="p-2 rounded-xl text-gray-500 bg-white/50 hover:text-red-500 hover:bg-white shadow-sm transition-all dark:bg-gray-800/50 dark:hover:bg-gray-800 dark:hover:text-red-400 cursor-pointer"
                             id={"delete-btn-#{block.id}"}
                           >
                             <.icon name="hero-trash-solid" class="w-4 h-4" />
