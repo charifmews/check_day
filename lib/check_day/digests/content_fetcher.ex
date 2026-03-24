@@ -180,7 +180,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     url = "https://query1.finance.yahoo.com/v8/finance/chart/#{symbol}?interval=1d&range=1d"
     
     price_json = 
-      case Req.get(url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
+      case Req.get(url, headers: [{"User-Agent", "Mozilla/5.0"}], pool_timeout: 45_000, receive_timeout: 45_000) do
         {:ok, %Req.Response{status: 200, body: body}} ->
           Jason.encode!(body)
         _ ->
@@ -190,7 +190,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     rss_url = "https://feeds.finance.yahoo.com/rss/2.0/headline?s=#{symbol}&region=US&lang=en-US"
     
     news_xml =
-      case Req.get(rss_url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
+      case Req.get(rss_url, headers: [{"User-Agent", "Mozilla/5.0"}], pool_timeout: 45_000, receive_timeout: 45_000) do
         {:ok, %Req.Response{status: 200, body: body}} ->
           if is_binary(body), do: String.slice(body, 0, 10000), else: "No news parsing"
         _ ->
@@ -888,5 +888,6 @@ defmodule CheckDay.Digests.ContentFetcher do
       provider: :openrouter,
       id: "google/gemini-3-flash-preview"
     })
+    |> Req.merge(receive_timeout: 120_000, pool_timeout: 120_000)
   end
 end
