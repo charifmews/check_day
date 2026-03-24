@@ -40,6 +40,10 @@ defmodule CheckDay.Digests.ContentFetcher do
     fetch_via_hub_crawler(block)
   end
 
+  defp route_firecrawl_strategy(%{type: :weather} = block) do
+    fetch_via_weather_api(block)
+  end
+
   defp route_firecrawl_strategy(block) do
     fetch_via_basic_search(block)
   end
@@ -72,6 +76,79 @@ defmodule CheckDay.Digests.ContentFetcher do
       {:error, reason} ->
         Logger.error("Firecrawl search error: #{inspect(reason)}")
         {:error, reason}
+    end
+  end
+
+  # ===========================================================================
+  # STRATEGY: ADVANCED WEATHER API (For :weather)
+  # ===========================================================================
+
+  @weather_schema Zoi.map(%{
+    headline: Zoi.string(description: "A short, engaging headline (e.g., 'Sunny in Paris', 'Grab an umbrella in London')"),
+    summary: Zoi.string(description: "The concise 1-3 sentence markdown summary.")
+  })
+
+  defp fetch_via_weather_api(block) do
+    location = block.config["location"] || block.label
+    Logger.info("Weather API initiated for location: #{location}")
+
+    case Req.get("https://nominatim.openstreetmap.org/search", 
+           params: [q: location, format: "json", limit: 1],
+           headers: [{"User-Agent", "CheckDay_Production_App"}]
+         ) do
+      {:ok, %Req.Response{status: 200, body: [geo | _]}} ->
+        lat = geo["lat"]
+        lon = geo["lon"]
+        display_name = geo["display_name"]
+        
+        case Req.get("https://api.open-meteo.com/v1/forecast", params: [
+               latitude: lat,
+               longitude: lon,
+               current: "temperature_2m,weather_code,precipitation,cloud_cover",
+               daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max",
+               timezone: "auto"
+             ]) do
+          {:ok, %Req.Response{status: 200, body: weather_data}} ->
+            prompt = """
+            You are a helpful assistant writing a brief weather summary for a daily digest app.
+            The user's location is precisely: #{display_name}.
+            
+            Here is the raw, 100% accurate numerical JSON weather data for today:
+            #{Jason.encode!(weather_data)}
+            
+            RULES:
+            - Write a highly engaging, concise (1-3 sentences) markdown summary.
+            - You MUST explicitly include the current temperature.
+            - You MUST explicitly include today's high and low.
+            - Note any significant precipitation or lack thereof.
+            - Provide temperatures natively (e.g., if the JSON data is in Celsius, write it as °C).
+            - Do NOT hallucinate temperatures or conditions. Rely ONLY on the provided JSON numbers.
+            """
+            
+            try do
+              result = ReqLLM.generate_object!(llm_model(), prompt, @weather_schema)
+              
+              {:ok, [
+                %{
+                  headline: result[:headline] || result["headline"] || "Weather for #{location}",
+                  digest_summary: result[:summary] || result["summary"],
+                  sources: [{"https://open-meteo.com/", "open-meteo.com"}, {"https://nominatim.openstreetmap.org/", "openstreetmap.org"}]
+                }
+              ]}
+            rescue
+              e ->
+                Logger.error("Weather LLM parsing failed: #{inspect(e)}")
+                {:error, "Failed to parse weather"}
+            end
+            
+          _ ->
+             Logger.error("Open-Meteo forecast failed")
+             {:error, "Open-Meteo forecast failed"}
+        end
+        
+      _ ->
+        Logger.error("Nominatim geocoding failed for #{location}")
+        {:error, "Nominatim geocoding failed"}
     end
   end
 

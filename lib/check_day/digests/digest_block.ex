@@ -17,10 +17,12 @@ defmodule CheckDay.Digests.DigestBlock do
     create :create do
       primary? true
       accept [:type, :label, :config, :position, :enabled, :active_days, :user_id]
+      change CheckDay.Digests.Changes.NormalizeWeatherLocation
     end
 
     update :update do
       accept [:type, :label, :config, :position, :enabled, :active_days]
+      change CheckDay.Digests.Changes.NormalizeWeatherLocation
     end
 
     update :update_days do
