@@ -53,29 +53,16 @@ defmodule CheckDayWeb.SignInLive do
           "w-full max-w-md mx-auto",
           "animate-[fadeIn_0.4s_ease-out]"
         ]}>
-          <%!-- Logo + Brand --%>
-          <div class="flex flex-col items-center mb-8">
-            <img
-              src={~p"/images/logo.svg"}
-              alt="Check.Day"
-              class="w-16 h-16 mb-3"
-              id="sign-in-logo"
-            />
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight" id="sign-in-title">
-              Check<span class="text-[oklch(70%_0.213_47.604)]">.</span>Day
-            </h1>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Wake up to what matters
-            </p>
-          </div>
-
           <%= if @state == :form do %>
             <%!-- Sign-in Card --%>
-            <div class={[
-              "rounded-2xl border p-8",
-              "bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg shadow-gray-200/50",
-              "dark:bg-gray-800/80 dark:border-gray-700 dark:shadow-gray-900/50"
-            ]} id="sign-in-card">
+            <div
+              class={[
+                "rounded-3xl border p-8 sm:p-10",
+                "bg-white/70 backdrop-blur-xl border-[oklch(70%_0.213_47.604)]/20 shadow-2xl shadow-[oklch(70%_0.213_47.604)]/5",
+                "dark:bg-gray-900/60 dark:border-white/10 dark:shadow-none"
+              ]}
+              id="sign-in-card"
+            >
               <div class="text-center mb-6">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   Sign in or create account
@@ -87,7 +74,10 @@ defmodule CheckDayWeb.SignInLive do
 
               <form phx-submit="request_magic_link" id="sign-in-form" class="space-y-5">
                 <div>
-                  <label for="email-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  <label
+                    for="email-input"
+                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+                  >
                     Email address
                   </label>
                   <input
@@ -124,19 +114,21 @@ defmodule CheckDayWeb.SignInLive do
                     "cursor-pointer"
                   ]}
                 >
-                  <.icon name="hero-paper-airplane" class="w-4 h-4" />
-                  Send magic link
+                  <.icon name="hero-paper-airplane" class="w-4 h-4" /> Send magic link
                 </button>
               </form>
             </div>
           <% else %>
             <%!-- Success State --%>
-            <div class={[
-              "rounded-2xl border p-8 text-center",
-              "bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg shadow-gray-200/50",
-              "dark:bg-gray-800/80 dark:border-gray-700 dark:shadow-gray-900/50",
-              "animate-[fadeIn_0.3s_ease-out]"
-            ]} id="sign-in-success">
+            <div
+              class={[
+                "rounded-3xl border p-8 sm:p-10 text-center",
+                "bg-white/70 backdrop-blur-xl border-green-500/20 shadow-2xl shadow-green-500/10",
+                "dark:bg-gray-900/60 dark:border-green-500/20 dark:shadow-none",
+                "animate-[fadeIn_0.3s_ease-out]"
+              ]}
+              id="sign-in-success"
+            >
               <div class={[
                 "w-16 h-16 rounded-full mx-auto mb-5 flex items-center justify-center",
                 "bg-green-50 dark:bg-green-950/40"
@@ -157,13 +149,19 @@ defmodule CheckDayWeb.SignInLive do
                 Click the link in the email to sign in. It may take a minute to arrive.
               </p>
 
-              <div class={[
-                "rounded-xl p-4 mb-6 text-left",
-                "bg-amber-50 border border-amber-200",
-                "dark:bg-amber-950/30 dark:border-amber-800/50"
-              ]} id="spam-warning">
+              <div
+                class={[
+                  "rounded-xl p-4 mb-6 text-left",
+                  "bg-amber-50 border border-amber-200",
+                  "dark:bg-amber-950/30 dark:border-amber-800/50"
+                ]}
+                id="spam-warning"
+              >
                 <div class="flex gap-2.5">
-                  <.icon name="hero-exclamation-triangle" class="w-4 h-4 text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <.icon
+                    name="hero-exclamation-triangle"
+                    class="w-4 h-4 text-amber-500 dark:text-amber-400 mt-0.5 shrink-0"
+                  />
                   <div>
                     <p class="text-xs font-medium text-amber-800 dark:text-amber-300 mb-1">
                       Can't find the email?
@@ -189,21 +187,6 @@ defmodule CheckDayWeb.SignInLive do
               </button>
             </div>
           <% end %>
-
-          <%!-- Back to homepage --%>
-          <div class="text-center mt-6">
-            <a
-              href={~p"/"}
-              class={[
-                "text-sm text-gray-400 dark:text-gray-500",
-                "hover:text-gray-600 dark:hover:text-gray-300",
-                "transition-colors duration-200"
-              ]}
-              id="back-to-home"
-            >
-              ← Back to homepage
-            </a>
-          </div>
         </div>
       </div>
     </Layouts.app>

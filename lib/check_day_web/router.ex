@@ -64,8 +64,7 @@ defmodule CheckDayWeb.Router do
     reset_route auth_routes_prefix: "/auth"
 
     # Remove this if you do not use the confirmation strategy
-    confirm_route CheckDay.Accounts.User, :confirm_new_user,
-      auth_routes_prefix: "/auth"
+    confirm_route CheckDay.Accounts.User, :confirm_new_user, auth_routes_prefix: "/auth"
 
     # Remove this if you do not use the magic link strategy.
     magic_sign_in_route(CheckDay.Accounts.User, :magic_link,

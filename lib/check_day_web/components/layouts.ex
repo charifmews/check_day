@@ -35,38 +35,71 @@ defmodule CheckDayWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex items-center gap-2.5 group">
-          <img src={~p"/images/logo.svg"} class="w-8 h-8 transition-transform group-hover:scale-105" />
-          <span class="text-lg font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-            Check<span class="text-[oklch(70%_0.213_47.604)]">.</span>Day
-          </span>
-        </a>
-      </div>
-      <div class="flex-none flex items-center gap-3">
+    <header
+      class="w-full px-6 sm:px-10 py-6 flex items-center justify-between relative z-50"
+      id="main-header"
+    >
+      <a href="/" class="flex items-center gap-3 group" id="header-logo-link">
+        <div class="relative flex items-center justify-center p-2 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm group-hover:shadow-md transition-all duration-300 group-hover:border-[oklch(70%_0.213_47.604)]/30">
+          <img
+            src={~p"/images/logo.svg"}
+            alt="Check.Day logo"
+            class="w-7 h-7 transition-all duration-300 group-hover:scale-110"
+          />
+        </div>
+        <span class="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+          Check<span class="text-[oklch(70%_0.213_47.604)]">.</span>Day
+        </span>
+      </a>
+
+      <div class="flex-none flex items-center gap-4">
         <.theme_toggle />
+
         <%= if @current_user do %>
+          <a
+            href="/dashboard"
+            class={[
+              "hidden sm:inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold",
+              "text-gray-700 bg-white/50 dark:text-gray-200 dark:bg-gray-800/50 backdrop-blur-md",
+              "border border-gray-200/50 dark:border-gray-700/50 shadow-sm",
+              "hover:bg-white hover:border-gray-300 dark:hover:bg-gray-800 dark:hover:border-gray-600",
+              "transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
+            ]}
+          >
+            Dashboard
+          </a>
           <a
             href="/sign-out"
             class={[
-              "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium",
-              "text-gray-600 border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300",
+              "inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-medium",
+              "text-gray-600 border border-gray-200/80 bg-white/80 dark:bg-gray-800/80 dark:border-gray-700/80 dark:text-gray-300 backdrop-blur-md",
               "hover:bg-red-50 hover:border-red-200 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:border-red-800 dark:hover:text-red-400",
-              "transition-all duration-200"
+              "transition-all duration-300 hover:shadow-sm hover:-translate-y-0.5"
             ]}
             id="header-sign-out"
           >
             <.icon name="hero-arrow-right-start-on-rectangle-mini" class="w-4 h-4" /> Sign out
           </a>
+        <% else %>
+          <a
+            href="/sign-in"
+            class={[
+              "inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold",
+              "text-gray-700 bg-white/80 dark:text-gray-200 dark:bg-gray-800/80 backdrop-blur-md",
+              "border border-gray-200/50 dark:border-gray-700/50 shadow-sm",
+              "hover:bg-gray-50 hover:border-gray-300 dark:hover:bg-gray-700 dark:hover:border-gray-600",
+              "transition-all duration-300 hover:shadow-md hover:-translate-y-0.5"
+            ]}
+            id="header-sign-in"
+          >
+            Sign in
+          </a>
         <% end %>
       </div>
     </header>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto space-y-4">
-        {render_slot(@inner_block)}
-      </div>
+    <main class="flex-1 w-full max-w-[1600px] mx-auto relative z-10 px-4 sm:px-6 lg:px-10 pb-16">
+      {render_slot(@inner_block)}
     </main>
 
     <.flash_group flash={@flash} />

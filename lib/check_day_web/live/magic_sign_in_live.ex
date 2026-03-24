@@ -38,21 +38,13 @@ defmodule CheckDayWeb.MagicSignInLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+    <div class="flex items-center justify-center min-h-[70vh]">
       <div class="w-full max-w-md mx-auto text-center animate-[fadeIn_0.4s_ease-out]">
-        <%!-- Logo + Brand --%>
-        <div class="flex flex-col items-center mb-8">
-          <img src={~p"/images/logo.svg"} alt="Check.Day" class="w-16 h-16 mb-3" />
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-            Check<span class="text-[oklch(70%_0.213_47.604)]">.</span>Day
-          </h1>
-        </div>
-
         <%!-- Card --%>
         <div class={[
-          "rounded-2xl border p-8",
-          "bg-white/80 backdrop-blur-sm border-gray-200 shadow-lg shadow-gray-200/50",
-          "dark:bg-gray-800/80 dark:border-gray-700 dark:shadow-gray-900/50"
+          "rounded-3xl border p-8 sm:p-10",
+          "bg-white/70 backdrop-blur-xl border-[oklch(70%_0.213_47.604)]/20 shadow-2xl shadow-[oklch(70%_0.213_47.604)]/5",
+          "dark:bg-gray-900/60 dark:border-white/10 dark:shadow-none"
         ]}>
           <div class={[
             "w-16 h-16 rounded-full mx-auto mb-5 flex items-center justify-center",
@@ -92,8 +84,7 @@ defmodule CheckDayWeb.MagicSignInLive do
                 "dark:focus:ring-offset-gray-900"
               ]}
             >
-              <.icon name="hero-arrow-right-on-rectangle" class="w-4 h-4" />
-              Sign in
+              <.icon name="hero-arrow-right-on-rectangle" class="w-4 h-4" /> Sign in
             </button>
 
             <div class="mt-4 flex flex-col items-center gap-1">
@@ -114,15 +105,6 @@ defmodule CheckDayWeb.MagicSignInLive do
               </p>
             </div>
           </.form>
-        </div>
-
-        <div class="text-center mt-6">
-          <a
-            href={~p"/"}
-            class="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
-          >
-            ← Back to homepage
-          </a>
         </div>
       </div>
     </div>

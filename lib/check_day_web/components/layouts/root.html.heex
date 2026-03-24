@@ -61,7 +61,15 @@
       })();
     </script>
   </head>
-  <body>
-    {@inner_content}
+  <body class="bg-gray-50 dark:bg-[#0a0f18] min-h-screen flex flex-col relative overflow-x-hidden font-sans selection:bg-[oklch(70%_0.213_47.604)]/30 selection:text-[oklch(60%_0.213_47.604)] dark:selection:text-white">
+    <%!-- Global Background Glow Effects --%>
+    <div class="fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[oklch(70%_0.213_47.604)]/10 dark:bg-[oklch(70%_0.213_47.604)]/20 rounded-full blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-screen z-0">
+    </div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 dark:bg-indigo-500/15 rounded-full blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-screen z-0">
+    </div>
+
+    <div class="relative z-10 flex flex-col min-h-screen flex-1 w-full">
+      {@inner_content}
+    </div>
   </body>
 </html>

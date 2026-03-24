@@ -149,10 +149,26 @@ defmodule CheckDay.Digests.ContentFetcher do
   # -- LLM extraction with relevance check -----------------------------------
 
   @extraction_schema [
-    relevant: [type: :boolean, required: true, doc: "Is this content actually about the TOPIC? true if relevant, false if off-topic."],
-    headline: [type: :string, required: true, doc: "The main headline of the article. Return null if not found."],
-    digest_summary: [type: :string, required: true, doc: "A concise summary of the key facts. Return null if not found."],
-    verbatim_quote: [type: :string, required: true, doc: "An exact quote from the source material. Return null if not found."]
+    relevant: [
+      type: :boolean,
+      required: true,
+      doc: "Is this content actually about the TOPIC? true if relevant, false if off-topic."
+    ],
+    headline: [
+      type: :string,
+      required: true,
+      doc: "The main headline of the article. Return null if not found."
+    ],
+    digest_summary: [
+      type: :string,
+      required: true,
+      doc: "A concise summary of the key facts. Return null if not found."
+    ],
+    verbatim_quote: [
+      type: :string,
+      required: true,
+      doc: "An exact quote from the source material. Return null if not found."
+    ]
   ]
 
   defp extract_and_validate(markdown, source_url, topic) do
@@ -201,18 +217,29 @@ defmodule CheckDay.Digests.ContentFetcher do
   # -- Group & combine similar results ---------------------------------------
 
   @combine_schema [
-    headline: [type: :string, required: true, doc: "A single headline that best represents all the sources combined."],
-    digest_summary: [type: :string, required: true, doc: "A concise combined summary synthesizing all sources into one coherent paragraph. Include the most important facts from each source without repeating."]
+    headline: [
+      type: :string,
+      required: true,
+      doc: "A single headline that best represents all the sources combined."
+    ],
+    digest_summary: [
+      type: :string,
+      required: true,
+      doc:
+        "A concise combined summary synthesizing all sources into one coherent paragraph. Include the most important facts from each source without repeating."
+    ]
   ]
 
   defp combine_results([], _block), do: []
 
   defp combine_results([single], _block) do
-    [%{
-      headline: single.headline,
-      digest_summary: single.digest_summary,
-      sources: [source_tuple(single.source_url)]
-    }]
+    [
+      %{
+        headline: single.headline,
+        digest_summary: single.digest_summary,
+        sources: [source_tuple(single.source_url)]
+      }
+    ]
   end
 
   defp combine_results(results, block) do
@@ -221,11 +248,13 @@ defmodule CheckDay.Digests.ContentFetcher do
     Enum.flat_map(groups, fn group ->
       case group do
         [single] ->
-          [%{
-            headline: single.headline,
-            digest_summary: single.digest_summary,
-            sources: [source_tuple(single.source_url)]
-          }]
+          [
+            %{
+              headline: single.headline,
+              digest_summary: single.digest_summary,
+              sources: [source_tuple(single.source_url)]
+            }
+          ]
 
         multiple ->
           merge_group(multiple, block)
@@ -262,7 +291,15 @@ defmodule CheckDay.Digests.ContentFetcher do
     """
 
     try do
-      schema = [groups: [type: {:list, {:list, :pos_integer}}, required: true, doc: "Array of arrays of 1-based result indices. Each inner array is a group of similar results."]]
+      schema = [
+        groups: [
+          type: {:list, {:list, :pos_integer}},
+          required: true,
+          doc:
+            "Array of arrays of 1-based result indices. Each inner array is a group of similar results."
+        ]
+      ]
+
       extracted = ReqLLM.generate_object!(llm_model(), prompt, schema)
       raw_groups = extracted[:groups] || extracted["groups"] || []
 
@@ -308,19 +345,24 @@ defmodule CheckDay.Digests.ContentFetcher do
     try do
       combined = ReqLLM.generate_object!(llm_model(), prompt, @combine_schema)
 
-      [%{
-        headline: combined[:headline] || combined["headline"],
-        digest_summary: combined[:digest_summary] || combined["digest_summary"],
-        sources: sources
-      }]
+      [
+        %{
+          headline: combined[:headline] || combined["headline"],
+          digest_summary: combined[:digest_summary] || combined["digest_summary"],
+          sources: sources
+        }
+      ]
     rescue
       e ->
         Logger.warning("Merge failed: #{inspect(e)}, returning first result")
-        [%{
-          headline: hd(results).headline,
-          digest_summary: hd(results).digest_summary,
-          sources: sources
-        }]
+
+        [
+          %{
+            headline: hd(results).headline,
+            digest_summary: hd(results).digest_summary,
+            sources: sources
+          }
+        ]
     end
   end
 
