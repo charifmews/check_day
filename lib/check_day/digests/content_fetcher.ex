@@ -32,11 +32,23 @@ defmodule CheckDay.Digests.ContentFetcher do
         {:ok, [%{headline: block.label, digest_summary: reminder, sources: []}]}
 
       _ ->
-        fetch_from_firecrawl(block)
+        route_firecrawl_strategy(block)
     end
   end
 
-  defp fetch_from_firecrawl(block) do
+  defp route_firecrawl_strategy(%{type: t} = block) when t in [:news, :interest] do
+    fetch_via_hub_crawler(block)
+  end
+
+  defp route_firecrawl_strategy(block) do
+    fetch_via_basic_search(block)
+  end
+
+  # ===========================================================================
+  # STRATEGY: LEGACY BASIC SEARCH (For :weather, :stock, :competitor, :custom)
+  # ===========================================================================
+
+  defp fetch_via_basic_search(block) do
     query = build_query(block)
 
     case Firecrawl.search_and_scrape(
@@ -62,6 +74,175 @@ defmodule CheckDay.Digests.ContentFetcher do
         {:error, reason}
     end
   end
+
+  # ===========================================================================
+  # STRATEGY: ADVANCED HUB CRAWLER (For :news, :interest)
+  # ===========================================================================
+
+  @source_schema Zoi.map(%{
+    urls: Zoi.list(Zoi.string(), description: "The exact, direct URLs (must include https://) to the 'latest news', 'discussions', or 'blog' indexes of the top 3 best community sites for this topic.")
+          |> Zoi.min(3)
+          |> Zoi.max(5)
+  })
+
+  @hub_schema Zoi.map(%{
+    discussions: Zoi.list(Zoi.string(), description: "Top active discussion titles with their full absolute URLs, formatted strictly as markdown links: [Title](URL).")
+                 |> Zoi.max(5),
+    community_sentiment: Zoi.string(description: "A 1-2 sentence summary of the general community focus right now based on these recent topics.")
+  })
+
+  @final_schema Zoi.map(%{
+    headline: Zoi.string(description: "An overarching headline for the digest block."),
+    digest_markdown: Zoi.string(description: "A rich markdown body synthesizing the recent community discussions across all sources. Include inline markdown links [Title](URL) to the most important discussions."),
+    source_urls: Zoi.list(Zoi.string(), description: "A list of strings of the raw URLs used as sources.")
+  })
+
+  defp fetch_via_hub_crawler(block) do
+    topic = block_topic(block)
+    Logger.info("Advanced Hub Crawler initiated for topic: #{topic}")
+
+    prompt = """
+    The user wants to track community news and active discussions about: "#{topic}".
+    Identify the absolute best specific forum, community aggregator, or trusted news site index pages for this.
+    Instead of just the domain, provide the FULL, direct URL to their 'latest' or 'news' index page.
+    For example, instead of 'news.yCombinator.com', use 'https://news.ycombinator.com'.
+    Instead of 'elixirforum.com', use 'https://elixirforum.com/latest'.
+    IMPORTANT: Do NOT suggest reddit.com, twitter.com, x.com, facebook.com, or linkedin.com, as they block scrapers.
+    Provide minimum 3 and maximum 5 URLs.
+    """
+
+    urls =
+      try do
+        result = ReqLLM.generate_object!(llm_model(), prompt, @source_schema)
+        result[:urls] || result["urls"] || []
+      rescue
+        e ->
+          Logger.error("LLM URL sourcing failed: #{inspect(e)}")
+          []
+      end
+
+    if urls == [] do
+      {:ok, [%{headline: block.label, digest_summary: "No relevant community hubs could be found for this topic.", sources: []}]}
+    else
+      # We use Task.async_stream to scrape all hubs concurrently
+      all_findings =
+        urls
+        |> Task.async_stream(fn url ->
+          case Firecrawl.scrape_and_extract_from_url(
+                 url: url,
+                 formats: ["markdown"],
+                 only_main_content: true,
+                 timeout: 30_000
+               ) do
+            {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} ->
+              if markdown && markdown != "" do
+                extracted = extract_hub(url, markdown, topic)
+                has_discussions = case extracted[:discussions] || extracted["discussions"] do
+                  list when is_list(list) and length(list) > 0 -> true
+                  _ -> false
+                end
+
+                if has_discussions do
+                  %{url: url, findings: extracted}
+                else
+                  nil
+                end
+              else
+                nil
+              end
+            _ ->
+              nil
+          end
+        end, timeout: 35_000)
+        |> Enum.map(fn
+          {:ok, result} -> result
+          {:exit, _} -> nil
+        end)
+        |> Enum.reject(&is_nil/1)
+
+      if all_findings == [] do
+         {:ok, [%{headline: block.label, digest_summary: "The community has been quiet on this topic over the last 24 hours. No recent discussions were detected.", sources: []}]}
+      else
+         combine_hub_findings(topic, all_findings)
+      end
+    end
+  end
+
+  defp extract_hub(url, markdown, topic) do
+    current_date = DateTime.utc_now() |> Calendar.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    prompt = """
+    You are reading an index page (forum, news aggregator, or blog) related to #{topic}.
+    The base URL is: #{url}. Use this to convert relative links to absolute links.
+    Today's current date and time is: #{current_date}.
+    
+    Extract the most active / top headlines or discussions listed on the page.
+    IMPORTANT CRITICAL INSTRUCTION: You must ONLY extract discussions that are extremely recent (published or last replied to within the last 24 to 48 hours). 
+    Ignore anything older than a few days. Look closely at timestamps, dates like "2h" or "yesterday", or compare dates with the current date to determine recency.
+    If there are no discussions from the last 2 days on this page, return an empty array for discussions.
+    
+    Provide a general summary of the trending topics from these recent discussions.
+
+    SOURCE MATERIAL:
+    #{markdown}
+    """
+
+    try do
+      ReqLLM.generate_object!(llm_model(), prompt, @hub_schema)
+    rescue
+      _ -> %{}
+    end
+  end
+
+  defp combine_hub_findings(topic, all_findings) do
+    findings_text =
+      all_findings
+      |> Enum.map(fn f ->
+        """
+        SOURCE HUB: #{f.url}
+        DISCUSSIONS:
+        #{Enum.join(f.findings[:discussions] || f.findings["discussions"] || [], "\n")}
+        SENTIMENT: #{f.findings[:community_sentiment] || f.findings["community_sentiment"]}
+        """
+      end)
+      |> Enum.join("\n\n")
+
+    prompt = """
+    You are generating a daily digest block for the topic: "#{topic}".
+    I have scraped multiple community hubs and extracted ONLY the most recent, top discussions from the last 24-48 hours.
+    
+    FINDINGS:
+    #{findings_text}
+    
+    Create a highly engaging, concise final digest. 
+    Synthesize the information. If multiple hubs talk about the same release, combine them.
+    Embed the most interesting links directly into your summary using ONLY markdown links [Title](URL).
+    """
+
+    try do
+      result = ReqLLM.generate_object!(llm_model(), prompt, @final_schema)
+      
+      raw_source_urls = result[:source_urls] || result["source_urls"] || []
+      sources = Enum.map(raw_source_urls, &source_tuple/1)
+
+      {:ok, [
+        %{
+          headline: result[:headline] || result["headline"] || topic,
+          digest_summary: result[:digest_markdown] || result["digest_markdown"],
+          sources: sources
+        }
+      ]}
+    rescue
+      e ->
+        Logger.error("Failed to combine findings: #{inspect(e)}")
+        {:error, "Failed to combine findings"}
+    end
+  end
+
+
+  # ===========================================================================
+  # QUERY BUILDER & SHARED HELPERS
+  # ===========================================================================
 
   defp build_query(block) do
     config = block.config || %{}
@@ -95,7 +276,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     end
   end
 
-  # -- Parsing & deduplication -----------------------------------------------
+  # -- Parsing & deduplication for legacy search -----------------------------
 
   defp parse_and_extract(%{"data" => %{"web" => results}}, block) when is_list(results) do
     do_parse_and_extract(results, block)
@@ -146,7 +327,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     end
   end
 
-  # -- LLM extraction with relevance check -----------------------------------
+  # -- LLM extraction with relevance check for legacy search -----------------
 
   @extraction_schema [
     relevant: [
@@ -214,7 +395,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     end
   end
 
-  # -- Group & combine similar results ---------------------------------------
+  # -- Group & combine similar results for legacy search ---------------------
 
   @combine_schema [
     headline: [
@@ -368,9 +549,9 @@ defmodule CheckDay.Digests.ContentFetcher do
 
   defp source_tuple(nil), do: {nil, nil}
 
-  defp source_tuple(url) when is_binary(url) do
+  defp source_tuple(url) do
     domain =
-      case URI.parse(url) do
+      case URI.parse(to_string(url)) do
         %URI{host: host} when is_binary(host) ->
           host |> String.replace_leading("www.", "")
 

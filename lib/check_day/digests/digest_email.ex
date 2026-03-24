@@ -51,6 +51,10 @@ defmodule CheckDay.Digests.DigestEmail do
           .divider { border-color: #374151 !important; }
           .block-container { border-color: #374151 !important; background-color: #1f2937 !important; }
         }
+        .markdown-body a { color: #fd7831; text-decoration: none; font-weight: 500; }
+        .markdown-body p { margin-top: 0; margin-bottom: 12px; }
+        .markdown-body ul { margin-top: 0; margin-bottom: 12px; padding-left: 20px; }
+        .markdown-body li { margin-bottom: 6px; }
       </style>
     </head>
     <body class="email-bg" style="margin: 0; padding: 0; background-color: #f9fafb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
@@ -130,8 +134,18 @@ defmodule CheckDay.Digests.DigestEmail do
 
   defp render_result(result) do
     headline = result[:headline] || "Untitled"
-    summary = result[:digest_summary] || ""
     sources = result[:sources] || []
+
+    summary_html =
+      case result[:digest_summary] do
+        nil -> ""
+        "" -> ""
+        text ->
+          case Earmark.as_html(text) do
+            {:ok, html, _} -> html
+            _ -> escape(text)
+          end
+      end
 
     sources_html =
       case Enum.reject(sources, fn {url, _} -> is_nil(url) end) do
@@ -157,8 +171,10 @@ defmodule CheckDay.Digests.DigestEmail do
 
     """
     <div class="divider" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #f3f4f6;">
-      <h3 class="text-main" style="margin: 0 0 6px; color: #111827; font-size: 15px; font-weight: 700;">#{escape(headline)}</h3>
-      <p class="text-sub" style="margin: 0; color: #4b5563; font-size: 15px; line-height: 1.6;">#{escape(summary)}</p>
+      <h3 class="text-main" style="margin: 0 0 10px; color: #111827; font-size: 15px; font-weight: 700;">#{escape(headline)}</h3>
+      <div class="text-sub markdown-body" style="margin: 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+        #{summary_html}
+      </div>
       #{sources_html}
     </div>
     """
