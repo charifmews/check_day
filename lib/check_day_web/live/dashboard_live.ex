@@ -360,7 +360,22 @@ defmodule CheckDayWeb.DashboardLive do
         else: Enum.map_join(skipped_dates, ", ", &Date.to_iso8601/1)
 
     case ElevenLabs.get_conversation_signed_link(agent_id: agent_id) do
-      {:ok, %{body: %{"signed_url" => signed_url}}} ->
+      {:ok, %{body: %{"signed_url" => raw_signed_url}}} ->
+        env = if CheckDayWeb.Endpoint.host() == "check.day", do: "production", else: "development"
+        uri = URI.parse(raw_signed_url)
+
+        query =
+          URI.decode_query(uri.query || "") |> Map.put("environment", env) |> URI.encode_query()
+
+        signed_url = URI.to_string(%{uri | query: query})
+
+        opening_message =
+          if blocks == [] do
+            "Hey, welcome to Check.Day! I'm Maya. Let's build your morning digest — what do you usually check first thing when you wake up?"
+          else
+            "Welcome back to Check.Day! How can I change your morning digest for you today?"
+          end
+
         {:noreply,
          socket
          |> assign(:conversation_status, :connecting)
@@ -372,7 +387,8 @@ defmodule CheckDayWeb.DashboardLive do
            first_name: user.first_name || "",
            digest_time: first_digest_time(user.digest_times || default_digest_times()),
            active_days: active_days_str,
-           skipped_dates: skipped_dates_str
+           skipped_dates: skipped_dates_str,
+           opening_message: opening_message
          })}
 
       {:ok, _response} ->
@@ -1583,7 +1599,7 @@ defmodule CheckDayWeb.DashboardLive do
         mounted() {
           this.conversation = null;
 
-          this.handleEvent("start_conversation", async ({ signed_url, user_id, existing_blocks, first_name, digest_time, active_days, skipped_dates }) => {
+          this.handleEvent("start_conversation", async ({ signed_url, user_id, existing_blocks, first_name, digest_time, active_days, skipped_dates, opening_message }) => {
             try {
               await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -1595,7 +1611,8 @@ defmodule CheckDayWeb.DashboardLive do
                   first_name: first_name,
                   digest_time: digest_time,
                   active_days: active_days,
-                  skipped_dates: skipped_dates
+                  skipped_dates: skipped_dates,
+                  opening_message: opening_message
                 },
                 onMessage: (props) => {
                   if (this.el.isConnected) {
