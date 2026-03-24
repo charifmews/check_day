@@ -18,11 +18,14 @@ defmodule CheckDay.Digests.DigestBlock do
       primary? true
       accept [:type, :label, :config, :position, :enabled, :active_days, :user_id]
       change CheckDay.Digests.Changes.NormalizeWeatherLocation
+      change CheckDay.Digests.Changes.NormalizeCompetitor
     end
 
     update :update do
+      require_atomic? false
       accept [:type, :label, :config, :position, :enabled, :active_days]
       change CheckDay.Digests.Changes.NormalizeWeatherLocation
+      change CheckDay.Digests.Changes.NormalizeCompetitor
     end
 
     update :update_days do

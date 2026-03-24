@@ -44,6 +44,10 @@ defmodule CheckDay.Digests.ContentFetcher do
     fetch_via_weather_api(block)
   end
 
+  defp route_firecrawl_strategy(%{type: :competitor} = block) do
+    fetch_via_competitor_crawler(block)
+  end
+
   defp route_firecrawl_strategy(block) do
     fetch_via_basic_search(block)
   end
@@ -209,7 +213,7 @@ defmodule CheckDay.Digests.ContentFetcher do
                  url: url,
                  formats: ["markdown"],
                  only_main_content: true,
-                 timeout: 30_000
+                 timeout: 45_000
                ) do
             {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} ->
               if markdown && markdown != "" do
@@ -230,7 +234,7 @@ defmodule CheckDay.Digests.ContentFetcher do
             _ ->
               nil
           end
-        end, timeout: 35_000)
+        end, timeout: 50_000)
         |> Enum.map(fn
           {:ok, result} -> result
           {:exit, _} -> nil
@@ -312,6 +316,165 @@ defmodule CheckDay.Digests.ContentFetcher do
     rescue
       e ->
         Logger.error("Failed to combine findings: #{inspect(e)}")
+        {:error, "Failed to combine findings"}
+    end
+  end
+
+
+  # ===========================================================================
+  # STRATEGY: ADVANCED COMPETITOR CRAWLER (For :competitor)
+  # ===========================================================================
+
+  @competitor_source_schema Zoi.map(%{
+    urls: Zoi.list(Zoi.string(), description: "The exact, absolute URLs to the OFFICIAL 'blog', 'changelog', or 'newsroom' pages of the company.")
+          |> Zoi.min(2)
+          |> Zoi.max(3)
+  })
+
+  @competitor_intel_schema Zoi.map(%{
+    announcements: Zoi.list(Zoi.string(), description: "Top recent product announcements or feature releases with their full absolute URLs, formatted strictly as markdown links: [Title](URL).")
+                   |> Zoi.max(5),
+    strategic_focus: Zoi.string(description: "A 1-2 sentence summary of what this company is focusing heavily on right now based on these updates.")
+  })
+
+  @competitor_final_schema Zoi.map(%{
+    headline: Zoi.string(description: "A sharp headline capturing the competitor's recent momentum."),
+    digest_markdown: Zoi.string(description: "A rich markdown body synthesizing the recent announcements. Include inline markdown links [Title](URL). Format beautifully as a bulleted list where appropriate."),
+    source_urls: Zoi.list(Zoi.string(), description: "A list of strings of the raw URLs used as sources.")
+  })
+
+  defp fetch_via_competitor_crawler(block) do
+    config = block.config || %{}
+    company_name = config["company_name"] || block.label
+    domain = config["domain"] || company_name
+
+    Logger.info("Advanced Competitor Crawler initiated for: #{company_name}")
+
+    prompt = """
+    We want to track the latest official announcements, press releases, or changelogs for the company: #{company_name} (#{domain}).
+    Provide the top 2-3 direct absolute URLs to their OFFICIAL blog, newsroom, press, or changelog index pages.
+    (e.g., https://#{domain}/blog or https://#{domain}/changelog or https://#{domain}/news).
+    """
+
+    urls =
+      try do
+        result = ReqLLM.generate_object!(llm_model(), prompt, @competitor_source_schema)
+        result[:urls] || result["urls"] || []
+      rescue
+        e ->
+          Logger.error("LLM URL sourcing failed for competitor: #{inspect(e)}")
+          []
+      end
+
+    if urls == [] do
+      {:ok, [%{headline: block.label, digest_summary: "No official announcement pages could be pinpointed for this company.", sources: []}]}
+    else
+      all_findings =
+        urls
+        |> Task.async_stream(fn url ->
+          case Firecrawl.scrape_and_extract_from_url(
+                 url: url,
+                 formats: ["markdown"],
+                 only_main_content: true,
+                 timeout: 45_000
+               ) do
+            {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} ->
+              if markdown && markdown != "" do
+                extracted = extract_competitor(url, markdown, company_name)
+                has_announcements = case extracted[:announcements] || extracted["announcements"] do
+                  list when is_list(list) and length(list) > 0 -> true
+                  _ -> false
+                end
+
+                if has_announcements do
+                  %{url: url, findings: extracted}
+                else
+                  nil
+                end
+              else
+                nil
+              end
+            _ -> nil
+          end
+        end, timeout: 50_000)
+        |> Enum.map(fn
+          {:ok, result} -> result
+          {:exit, _} -> nil
+        end)
+        |> Enum.reject(&is_nil/1)
+
+      if all_findings == [] do
+         {:ok, [%{headline: block.label, digest_summary: "No major product announcements or news detected in the last 14-30 days.", sources: []}]}
+      else
+         combine_competitor_findings(company_name, all_findings)
+      end
+    end
+  end
+
+  defp extract_competitor(url, markdown, company_name) do
+    current_date = DateTime.utc_now() |> Calendar.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+    prompt = """
+    You are reading an official index page (blog, changelog, newsroom) for the company: #{company_name}.
+    The base URL is: #{url}. Use this to convert relative links to absolute links.
+    Today's current date and time is: #{current_date}.
+    
+    Extract the most important recent product announcements, feature releases, or strategic news listed on the page.
+    IMPORTANT CRITICAL INSTRUCTION: Extract the absolute latest, most recent announcements present on this page. Focus on the very top of the feed or timeline to grab their newest updates.
+    Do NOT return an empty array if there is recent news; extract the top items.
+    
+    SOURCE MATERIAL:
+    #{markdown}
+    """
+
+    try do
+      ReqLLM.generate_object!(llm_model(), prompt, @competitor_intel_schema)
+    rescue
+      _ -> %{}
+    end
+  end
+
+  defp combine_competitor_findings(company_name, all_findings) do
+    findings_text =
+      all_findings
+      |> Enum.map(fn f ->
+        """
+        SOURCE: #{f.url}
+        ANNOUNCEMENTS:
+        #{Enum.join(f.findings[:announcements] || f.findings["announcements"] || [], "\n")}
+        STRATEGIC FOCUS: #{f.findings[:strategic_focus] || f.findings["strategic_focus"]}
+        """
+      end)
+      |> Enum.join("\n\n")
+
+    prompt = """
+    You are generating a daily digest block for competitor intelligence on: "#{company_name}".
+    I have scraped their official blogs/changelogs and extracted ONLY the most recent product updates and announcements.
+    
+    FINDINGS:
+    #{findings_text}
+    
+    Create a highly engaging, concise, professional final digest. 
+    Synthesize the information. If there are multiple updates, summarize them cleanly using bullet points.
+    Embed the most interesting links directly into your summary using ONLY markdown links [Title](URL).
+    """
+
+    try do
+      result = ReqLLM.generate_object!(llm_model(), prompt, @competitor_final_schema)
+      
+      raw_source_urls = result[:source_urls] || result["source_urls"] || []
+      sources = Enum.map(raw_source_urls, &source_tuple/1)
+
+      {:ok, [
+        %{
+          headline: result[:headline] || result["headline"] || company_name,
+          digest_summary: result[:digest_markdown] || result["digest_markdown"],
+          sources: sources
+        }
+      ]}
+    rescue
+      e ->
+        Logger.error("Failed to combine competitor findings: #{inspect(e)}")
         {:error, "Failed to combine findings"}
     end
   end
