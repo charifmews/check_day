@@ -738,48 +738,50 @@ defmodule CheckDayWeb.DashboardLive do
             <div class="flex items-center gap-2">
               <button
                 phx-click="generate_preview"
-                class="hidden sm:flex items-center gap-2 px-4 py-2 mr-3 rounded-full cursor-pointer bg-[oklch(70%_0.213_47.604)] hover:bg-[#ea580c] transition-all duration-300 text-white font-semibold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5"
+                class="flex items-center gap-2 px-4 py-2 mr-3 rounded-full cursor-pointer bg-[oklch(70%_0.213_47.604)] hover:bg-[#ea580c] transition-all duration-300 text-white font-semibold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5"
                 id="preview-digest-btn"
               >
                 <.icon name="hero-sparkles" class="w-4 h-4" />
                 <span>Preview Digest</span>
               </button>
 
-              <button
-                phx-click="prev_week"
-                class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 cursor-pointer backdrop-blur-md dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
-                id="prev-week-btn"
-              >
-                <.icon name="hero-chevron-left" class="w-5 h-5" />
-              </button>
+              <div class="hidden lg:flex items-center gap-2">
+                <button
+                  phx-click="prev_week"
+                  class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 cursor-pointer backdrop-blur-md dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
+                  id="prev-week-btn"
+                >
+                  <.icon name="hero-chevron-left" class="w-5 h-5" />
+                </button>
 
-              <button
-                phx-click="this_week"
-                class="px-5 py-2.5 rounded-full border border-gray-200/60 bg-white/70 cursor-pointerbackdrop-blur-md text-sm font-semibold text-gray-700 shadow-sm dark:bg-gray-800/60 dark:border-gray-700/60 dark:text-gray-200 hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300"
-                id="this-week-btn"
-              >
-                Today
-              </button>
+                <button
+                  phx-click="this_week"
+                  class="px-5 py-2.5 rounded-full border border-gray-200/60 bg-white/70 cursor-pointer backdrop-blur-md text-sm font-semibold text-gray-700 shadow-sm dark:bg-gray-800/60 dark:border-gray-700/60 dark:text-gray-200 hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300"
+                  id="this-week-btn"
+                >
+                  Today
+                </button>
 
-              <button
-                phx-click="next_week"
-                class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 backdrop-blur-md cursor-pointer dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
-                id="next-week-btn"
-              >
-                <.icon name="hero-chevron-right" class="w-5 h-5" />
-              </button>
+                <button
+                  phx-click="next_week"
+                  class="p-2.5 rounded-full border border-gray-200/60 bg-white/70 backdrop-blur-md cursor-pointer dark:bg-gray-800/60 dark:border-gray-700/60 shadow-sm hover:shadow-md hover:border-gray-300/80 dark:hover:border-gray-600 hover:-translate-y-0.5 transition-all duration-300 text-gray-600 dark:text-gray-300"
+                  id="next-week-btn"
+                >
+                  <.icon name="hero-chevron-right" class="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
 
           <%!-- 7-Day Grid --%>
-          <div class="grid grid-cols-7 gap-3" id="week-grid">
+          <div class="flex lg:grid lg:grid-cols-7 gap-3 overflow-x-auto pb-4 snap-x snap-mandatory" id="week-grid">
             <%= for day <- @days do %>
               <% is_disabled = day_disabled?(day, @user_active_days, @skipped_dates) %>
               <% is_weekly_off = day_weekly_off?(day, @user_active_days) %>
               <% is_date_skipped = day_date_skipped?(day, @skipped_dates) %>
               <div
                 class={[
-                  "rounded-3xl border flex flex-col min-h-[420px] transition-all duration-300 relative overflow-hidden group/day",
+                  "rounded-3xl border flex flex-col min-h-[420px] min-w-[280px] lg:min-w-0 shrink-0 snap-center transition-all duration-300 relative overflow-hidden group/day",
                   cond do
                     is_disabled ->
                       "border-gray-200/50 bg-gray-50/40 opacity-50 dark:border-gray-800/50 dark:bg-gray-900/40 backdrop-blur-md"
