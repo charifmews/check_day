@@ -284,7 +284,13 @@ defmodule CheckDay.Digests.ContentFetcher do
     urls =
       try do
         result = ReqLLM.generate_object!(llm_model(), prompt, @source_schema)
-        result[:urls] || result["urls"] || []
+        raw_urls = result[:urls] || result["urls"] || []
+        
+        raw_urls
+        |> Task.async_stream(&verify_and_recover_url(&1, topic), timeout: 35_000)
+        |> Enum.map(fn {:ok, res} -> res; _ -> nil end)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
       rescue
         e ->
           Logger.error("LLM URL sourcing failed: #{inspect(e)}")
@@ -451,7 +457,13 @@ defmodule CheckDay.Digests.ContentFetcher do
     urls =
       try do
         result = ReqLLM.generate_object!(llm_model(), prompt, @competitor_source_schema)
-        result[:urls] || result["urls"] || []
+        raw_urls = result[:urls] || result["urls"] || []
+        
+        raw_urls
+        |> Task.async_stream(&verify_and_recover_url(&1, company_name), timeout: 35_000)
+        |> Enum.map(fn {:ok, res} -> res; _ -> nil end)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.uniq()
       rescue
         e ->
           Logger.error("LLM URL sourcing failed for competitor: #{inspect(e)}")
@@ -900,6 +912,69 @@ defmodule CheckDay.Digests.ContentFetcher do
       provider: :openrouter,
       id: "google/gemini-3-flash-preview"
     })
+  end
+
+  # ===========================================================================
+  # STRATEGY: URL VERIFICATION & RECOVERY
+  # ===========================================================================
+
+  @validity_schema Zoi.map(%{
+    soft_404: Zoi.boolean(description: "True if the markdown page clearly indicates a '404', 'Page Not Found', 'Access Denied', or is just an empty 'Search Results' template. False if it contains genuine articles or discussions.")
+  })
+
+  defp verify_and_recover_url(url, search_context) do
+    Logger.info("Deep Verifying URL content via LLM evaluation: #{url}")
+
+    case Firecrawl.scrape_and_extract_from_url(url: url, formats: ["markdown"]) do
+      {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} when is_binary(markdown) ->
+        if valid_content_page?(markdown) do
+          url
+        else
+          Logger.warning("URL #{url} proved to be a Soft 404 or empty template! Recovering via Search...")
+          recover_url_via_firecrawl(search_context)
+        end
+
+      _ ->
+        Logger.warning("URL #{url} failed to scrape! Recovering via Firecrawl Search...")
+        recover_url_via_firecrawl(search_context)
+    end
+  end
+
+  defp valid_content_page?(markdown) do
+    snippet = String.slice(markdown, 0, 1500)
+    
+    prompt = """
+    Analyze the following markdown snippet from a scraped website. 
+    Does it appear to be a '404 Page Not Found', a 'Sorry, page does not exist' error, an 'Access Denied' block, or a completely empty 'Search Results' container without articles?
+
+    CONTENT SNIPPET:
+    #{snippet}
+    """
+
+    try do
+      result = ReqLLM.generate_object!(llm_model(), prompt, @validity_schema)
+      not (result[:soft_404] || result["soft_404"] || false)
+    rescue
+      _ -> true
+    end
+  end
+
+  defp recover_url_via_firecrawl(search_context) do
+    query = "#{search_context} official blog newsroom latest discussions"
+    
+    case Firecrawl.search_and_scrape(
+           query: query,
+           limit: 1,
+           scrapeOptions: %{formats: ["html"]}
+         ) do
+      {:ok, %{"data" => [%{"url" => recovered_url} | _]}} ->
+        Logger.info("Firecrawl successfully recovered a working URL: #{recovered_url}")
+        recovered_url
+
+      _ ->
+        Logger.error("Firecrawl search recovery entirely failed for: #{search_context}")
+        nil
+    end
   end
   defp delta_instruction(nil), do: ""
   defp delta_instruction(prev) do
