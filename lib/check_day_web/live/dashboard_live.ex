@@ -701,18 +701,66 @@ defmodule CheckDayWeb.DashboardLive do
                 Check.Day
               </span>
             </h1>
-            <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-3 text-center max-w-lg font-medium">
-              Let's set up your personalized daily digest.
+            <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-10 text-center max-w-2xl font-medium">
+              Let's get your personalized daily digest set up in 3 easy steps.
             </p>
-            <p class="text-base text-gray-500 dark:text-gray-400 mb-12 text-center max-w-md leading-relaxed">
-              Click the
-              <span class="font-semibold text-[oklch(70%_0.213_47.604)]">microphone button</span>
-              in the bottom-right corner to start a conversation and your assistant will effortlessly configure everything for you.
-            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full mx-auto mb-12 px-4 cursor-default">
+              <div class="group relative overflow-hidden bg-white/40 dark:bg-gray-800/40 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-500">
+                <div class="absolute inset-0 bg-gradient-to-br from-[oklch(70%_0.213_47.604)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                </div>
+                <div class="w-14 h-14 rounded-2xl bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center mb-6 shadow-inner ring-1 ring-orange-200 dark:ring-orange-500/30">
+                  <.icon
+                    name="hero-microphone"
+                    class="w-7 h-7 text-[oklch(70%_0.213_47.604)] dark:text-orange-400 group-hover:animate-pulse"
+                  />
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  1. Find a Quiet Space
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Start the voice agent in a quiet environment to build your morning digest without interruptions.
+                </p>
+              </div>
+
+              <div class="group relative overflow-hidden bg-white/40 dark:bg-gray-800/40 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-500">
+                <div class="absolute inset-0 bg-gradient-to-bl from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                </div>
+                <div class="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center mb-6 shadow-inner ring-1 ring-purple-200 dark:ring-purple-500/30">
+                  <.icon
+                    name="hero-rectangle-stack"
+                    class="w-7 h-7 text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform duration-300"
+                  />
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  2. Collect Blocks
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Tell the agent your interests. Add 3 to 6 blocks like ☀️ weather, 📰 news, ✨ interests, 📈 stocks, or 🏢 competitor updates.
+                </p>
+              </div>
+
+              <div class="group relative overflow-hidden bg-white/40 dark:bg-gray-800/40 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 p-6 sm:p-8 rounded-3xl flex flex-col items-center text-center shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-500">
+                <div class="absolute inset-0 bg-gradient-to-tr from-sky-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                </div>
+                <div class="w-14 h-14 rounded-2xl bg-sky-100 dark:bg-sky-500/20 flex items-center justify-center mb-6 shadow-inner ring-1 ring-sky-200 dark:ring-sky-500/30">
+                  <.icon
+                    name="hero-clock"
+                    class="w-7 h-7 text-sky-600 dark:text-sky-400 group-hover:-rotate-12 transition-transform duration-300"
+                  />
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  3. Set Your Schedule
+                </h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Pick a daily delivery time (like 7:00 AM) and configure any days of the week you would prefer to skip.
+                </p>
+              </div>
+            </div>
 
             <div class="flex items-center gap-2.5 px-6 py-3 rounded-full bg-white dark:bg-gray-900 border border-[oklch(70%_0.213_47.604)]/20 shadow-sm text-[oklch(60%_0.213_47.604)] dark:text-[oklch(75%_0.213_47.604)] text-sm font-semibold">
               <.icon name="hero-arrow-down-right" class="w-5 h-5 animate-bounce" />
-              <span>Your voice assistant is waiting</span>
+              <span>Click the microphone to start your setup</span>
             </div>
           </div>
         <% else %>
@@ -774,7 +822,10 @@ defmodule CheckDayWeb.DashboardLive do
           </div>
 
           <%!-- 7-Day Grid --%>
-          <div class="flex lg:grid lg:grid-cols-7 gap-3 overflow-x-auto pb-4 snap-x snap-mandatory" id="week-grid">
+          <div
+            class="flex lg:grid lg:grid-cols-7 gap-3 overflow-x-auto pb-4 snap-x snap-mandatory"
+            id="week-grid"
+          >
             <%= for day <- @days do %>
               <% is_disabled = day_disabled?(day, @user_active_days, @skipped_dates) %>
               <% is_weekly_off = day_weekly_off?(day, @user_active_days) %>

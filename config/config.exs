@@ -116,16 +116,15 @@ config :logger, :default_formatter,
 config :phoenix, :json_library, Jason
 
 config :hammer,
-  backend:
-    {
-      Hammer.Backend.ETS,
-      # 24 hours
-      [
-        expiry_ms: 60_000 * 60 * 24,
-        # 10 minutes
-        cleanup_interval_ms: 60_000 * 10
-      ]
-    }
+  backend: {
+    Hammer.Backend.ETS,
+    # 24 hours
+    [
+      expiry_ms: 60_000 * 60 * 24,
+      # 10 minutes
+      cleanup_interval_ms: 60_000 * 10
+    ]
+  }
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
