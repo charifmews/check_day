@@ -622,7 +622,6 @@ defmodule CheckDayWeb.DashboardLive do
       :interest -> "hero-sparkles"
       :competitor -> "hero-building-office-2"
       :stock -> "hero-chart-bar"
-
       _ -> "hero-square-3-stack-3d"
     end
   end
@@ -644,7 +643,6 @@ defmodule CheckDayWeb.DashboardLive do
       :stock ->
         "bg-emerald-50/70 border-emerald-200/60 dark:bg-emerald-900/20 dark:border-emerald-800/50 backdrop-blur-md shadow-sm"
 
-
       _ ->
         "bg-gray-50/70 border-gray-200/60 dark:bg-gray-800/30 dark:border-gray-700/50 backdrop-blur-md shadow-sm"
     end
@@ -657,7 +655,6 @@ defmodule CheckDayWeb.DashboardLive do
       :interest -> "text-amber-600 dark:text-amber-400"
       :competitor -> "text-red-600 dark:text-red-400"
       :stock -> "text-emerald-600 dark:text-emerald-400"
-
       _ -> "text-gray-600 dark:text-gray-400"
     end
   end
@@ -669,7 +666,6 @@ defmodule CheckDayWeb.DashboardLive do
       :interest -> "text-amber-900 dark:text-amber-200"
       :competitor -> "text-red-900 dark:text-red-200"
       :stock -> "text-emerald-900 dark:text-emerald-200"
-
       _ -> "text-gray-900 dark:text-gray-200"
     end
   end
@@ -1108,7 +1104,6 @@ defmodule CheckDayWeb.DashboardLive do
                           🏢 Competitor
                         </option>
                         <option value="stock" selected={@add_type == "stock"}>📈 Stock</option>
-
                       </select>
                       <.icon
                         name="hero-chevron-down"
@@ -1270,7 +1265,6 @@ defmodule CheckDayWeb.DashboardLive do
                                 <option value="stock" selected={@edit_type == "stock"}>
                                   📈 Stock
                                 </option>
-
                               </select>
                               <.icon
                                 name="hero-chevron-down"
@@ -1602,7 +1596,10 @@ defmodule CheckDayWeb.DashboardLive do
                 </h3>
                 <p class="text-sm text-gray-500 mt-1">Rendered live exclusively for you.</p>
               </div>
-              <button phx-click="close_preview" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition transition-colors text-gray-500 cursor-pointer">
+              <button
+                phx-click="close_preview"
+                class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition transition-colors text-gray-500 cursor-pointer"
+              >
                 <.icon name="hero-x-mark" class="w-6 h-6" />
               </button>
             </div>
@@ -1612,11 +1609,18 @@ defmodule CheckDayWeb.DashboardLive do
                 <:loading>
                   <div class="flex flex-col items-center justify-center py-20 h-full">
                     <div class="relative w-20 h-20 mb-6">
-                      <div class="absolute inset-0 bg-[oklch(70%_0.213_47.604)] rounded-full animate-ping opacity-20"></div>
-                      <div class="absolute inset-2 bg-[oklch(70%_0.213_47.604)] rounded-full animate-pulse opacity-40"></div>
-                      <.icon name="hero-arrow-path" class="absolute inset-0 w-full h-full text-[oklch(70%_0.213_47.604)] animate-spin" />
+                      <div class="absolute inset-0 bg-[oklch(70%_0.213_47.604)] rounded-full animate-ping opacity-20">
+                      </div>
+                      <div class="absolute inset-2 bg-[oklch(70%_0.213_47.604)] rounded-full animate-pulse opacity-40">
+                      </div>
+                      <.icon
+                        name="hero-arrow-path"
+                        class="absolute inset-0 w-full h-full text-[oklch(70%_0.213_47.604)] animate-spin"
+                      />
                     </div>
-                    <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Generating your Digest...</h4>
+                    <h4 class="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                      Generating your Digest...
+                    </h4>
                     <p class="text-sm text-gray-500 dark:text-gray-400 text-center max-w-sm">
                       We're crawling the web, synthesizing news, and fetching realtime metrics. This usually takes 15-40 seconds for a full dash.
                     </p>
@@ -1629,7 +1633,11 @@ defmodule CheckDayWeb.DashboardLive do
                   </div>
                 </:failed>
 
-                <iframe srcdoc={payload} class="w-full h-full min-h-[500px] border border-gray-200 dark:border-gray-700 rounded-xl bg-white shadow-sm flex-1"></iframe>
+                <iframe
+                  srcdoc={payload}
+                  class="w-full h-full min-h-[500px] border border-gray-200 dark:border-gray-700 rounded-xl bg-white shadow-sm flex-1"
+                >
+                </iframe>
               </.async_result>
             </div>
           </div>

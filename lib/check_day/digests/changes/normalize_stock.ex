@@ -14,11 +14,10 @@ defmodule CheckDay.Digests.Changes.NormalizeStock do
       config = Ash.Changeset.get_attribute(changeset, :config) || %{}
 
       if Ash.Changeset.changing_attribute?(changeset, :label) or
-         Ash.Changeset.changing_attribute?(changeset, :type) do
-         
+           Ash.Changeset.changing_attribute?(changeset, :type) do
         {clean_name, symbol} = normalize(label)
-        
-        new_config = 
+
+        new_config =
           config
           |> Map.put("company_name", clean_name)
           |> Map.put("symbol", symbol)
@@ -36,21 +35,28 @@ defmodule CheckDay.Digests.Changes.NormalizeStock do
 
   defp normalize(nil), do: {nil, nil}
   defp normalize(""), do: {"", ""}
+
   defp normalize(label) do
     prompt = """
     The user wants to track a stock, entered as: "#{label}".
     Determine the primary publicly traded US company they are talking about and provide its official stock ticker symbol.
     """
 
-    schema = Zoi.map(%{
-      company_name: Zoi.string(description: "The clean company name (e.g., 'Apple Inc.', 'Tesla')."),
-      symbol: Zoi.string(description: "The official stock ticker symbol on the US exchange (e.g., 'AAPL', 'TSLA').")
-    })
+    schema =
+      Zoi.map(%{
+        company_name:
+          Zoi.string(description: "The clean company name (e.g., 'Apple Inc.', 'Tesla')."),
+        symbol:
+          Zoi.string(
+            description:
+              "The official stock ticker symbol on the US exchange (e.g., 'AAPL', 'TSLA')."
+          )
+      })
 
     try do
       llm_model = ReqLLM.model!(%{provider: :openrouter, id: "google/gemini-3-flash-preview"})
       result = ReqLLM.generate_object!(llm_model, prompt, schema)
-      
+
       clean_name = result[:company_name] || result["company_name"] || label
       symbol = result[:symbol] || result["symbol"] || label
       {clean_name, symbol}

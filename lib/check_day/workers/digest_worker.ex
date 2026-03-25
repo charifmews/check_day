@@ -26,8 +26,12 @@ defmodule CheckDay.Workers.DigestWorker do
 
     last_run = Ash.read_first!(last_run_query, authorize?: false)
 
-    if false and last_run && DateTime.diff(DateTime.utc_now(), last_run.inserted_at, :second) < 8 * 3600 do
-      Logger.info("Skipping digest for user #{user_id} - already generated within the last 8 hours")
+    if last_run &&
+         DateTime.diff(DateTime.utc_now(), last_run.inserted_at, :second) < 8 * 3600 do
+      Logger.info(
+        "Skipping digest for user #{user_id} - already generated within the last 8 hours"
+      )
+
       :ok
     else
       blocks =
@@ -48,30 +52,44 @@ defmodule CheckDay.Workers.DigestWorker do
 
         sections = ContentFetcher.fetch_all(blocks, previous_blocks_data)
 
+        podcast_audio =
+          case CheckDay.Digests.PodcastGenerator.generate_audio(sections) do
+            {:ok, bytes} -> bytes
+            _ -> nil
+          end
+
         # We extract the bare HTML template wrapper organically for posterity caching
         html_body = DigestEmail.render_html(user, date, sections)
-        DigestEmail.build_and_send(user, date, sections)
 
         blocks_data_map =
           sections
           |> Enum.into(%{}, fn {b, content} -> {b.id, content} end)
           |> sanitize_for_json()
 
-        DigestRun
-        |> Ash.Changeset.for_create(:create, %{
-          user_id: user_id,
-          blocks_data: blocks_data_map,
-          html_body: html_body
-        })
-        |> Ash.create!(authorize?: false)
+        run =
+          DigestRun
+          |> Ash.Changeset.for_create(:create, %{
+            user_id: user_id,
+            blocks_data: blocks_data_map,
+            html_body: html_body,
+            podcast_audio: podcast_audio
+          })
+          |> Ash.create!(authorize?: false)
 
-        Logger.info("Digest sent and persisted for user #{user_id} on #{date_str} (#{length(sections)} sections)")
+        DigestEmail.build_and_send(user, date, sections, run.id)
+
+        Logger.info(
+          "Digest sent and persisted for user #{user_id} on #{date_str} (#{length(sections)} sections)"
+        )
+
         :ok
       end
     end
   end
 
-  defp sanitize_for_json(data) when is_tuple(data), do: data |> Tuple.to_list() |> sanitize_for_json()
+  defp sanitize_for_json(data) when is_tuple(data),
+    do: data |> Tuple.to_list() |> sanitize_for_json()
+
   defp sanitize_for_json(data) when is_list(data), do: Enum.map(data, &sanitize_for_json/1)
 
   defp sanitize_for_json(%{} = data) do

@@ -14,11 +14,10 @@ defmodule CheckDay.Digests.Changes.NormalizeCompetitor do
       config = Ash.Changeset.get_attribute(changeset, :config) || %{}
 
       if Ash.Changeset.changing_attribute?(changeset, :label) or
-         Ash.Changeset.changing_attribute?(changeset, :type) do
-         
+           Ash.Changeset.changing_attribute?(changeset, :type) do
         {clean_name, domain} = normalize(label)
-        
-        new_config = 
+
+        new_config =
           config
           |> Map.put("company_name", clean_name)
           |> Map.put("domain", domain)
@@ -36,6 +35,7 @@ defmodule CheckDay.Digests.Changes.NormalizeCompetitor do
 
   defp normalize(nil), do: {nil, nil}
   defp normalize(""), do: {"", ""}
+
   defp normalize(label) do
     prompt = """
     The user wants to track a company, entered as: "#{label}".
@@ -43,15 +43,22 @@ defmodule CheckDay.Digests.Changes.NormalizeCompetitor do
     Do NOT hallucinate a generic domain; determine their actual tech/startup domain (e.g., linear.app, stripe.com, vercel.com).
     """
 
-    schema = Zoi.map(%{
-      company_name: Zoi.string(description: "The clean company name (e.g., 'Linear', 'OpenAI', 'Anthropic')."),
-      domain: Zoi.string(description: "The company's primary web domain (e.g., 'linear.app', 'openai.com').")
-    })
+    schema =
+      Zoi.map(%{
+        company_name:
+          Zoi.string(
+            description: "The clean company name (e.g., 'Linear', 'OpenAI', 'Anthropic')."
+          ),
+        domain:
+          Zoi.string(
+            description: "The company's primary web domain (e.g., 'linear.app', 'openai.com')."
+          )
+      })
 
     try do
       llm_model = ReqLLM.model!(%{provider: :openrouter, id: "google/gemini-3-flash-preview"})
       result = ReqLLM.generate_object!(llm_model, prompt, schema)
-      
+
       clean_name = result[:company_name] || result["company_name"] || label
       domain = result[:domain] || result["domain"] || label
       {clean_name, domain}

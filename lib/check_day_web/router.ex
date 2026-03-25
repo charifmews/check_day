@@ -41,6 +41,7 @@ defmodule CheckDayWeb.Router do
       # If an authenticated user must *not* be present:
       # on_mount {CheckDayWeb.LiveUserAuth, :live_no_user}
       live "/dashboard", DashboardLive
+      live "/p/:id", PodcastLive, :show
     end
   end
 
@@ -48,6 +49,8 @@ defmodule CheckDayWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    get "/digests/:id/podcast.mp3", PodcastController, :show
     auth_routes AuthController, CheckDay.Accounts.User, path: "/auth"
     sign_out_route AuthController
 

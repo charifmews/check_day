@@ -38,7 +38,7 @@
     },
     {
       "allow_nil?": true,
-      "default": "'[1,2,3,4,5,6,7]'",
+      "default": "\"{1,2,3,4,5,6,7}\"",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
@@ -53,7 +53,7 @@
     },
     {
       "allow_nil?": true,
-      "default": "[]",
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
@@ -68,7 +68,7 @@
     },
     {
       "allow_nil?": true,
-      "default": "'{\"1\":\"07:00\",\"2\":\"07:00\",\"3\":\"07:00\",\"4\":\"07:00\",\"5\":\"07:00\",\"6\":\"07:00\",\"7\":\"07:00\"}'",
+      "default": "\"{\\\"1\\\":\\\"07:00\\\",\\\"2\\\":\\\"07:00\\\",\\\"3\\\":\\\"07:00\\\",\\\"4\\\":\\\"07:00\\\",\\\"5\\\":\\\"07:00\\\",\\\"6\\\":\\\"07:00\\\",\\\"7\\\":\\\"07:00\\\"}\"",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
@@ -97,7 +97,7 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "9872B58B97B09ECE83BE93842D67B59D9EC90F786B0AE9F82490EC3A4FDA131D",
+  "hash": "FD6A0B126CF0C6C9584A430CD6EC02728C1BED8CAEF64BDB25F5E182B52908FA",
   "identities": [
     {
       "all_tenants?": false,

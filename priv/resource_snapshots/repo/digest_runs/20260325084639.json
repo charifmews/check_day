@@ -21,8 +21,20 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "email",
-      "type": "citext"
+      "source": "blocks_data",
+      "type": "map"
+    },
+    {
+      "allow_nil?": false,
+      "default": "nil",
+      "generated?": false,
+      "precision": null,
+      "primary_key?": false,
+      "references": null,
+      "scale": null,
+      "size": null,
+      "source": "html_body",
+      "type": "text"
     },
     {
       "allow_nil?": true,
@@ -33,62 +45,63 @@
       "references": null,
       "scale": null,
       "size": null,
-      "source": "first_name",
-      "type": "text"
+      "source": "podcast_audio",
+      "type": "binary"
     },
     {
-      "allow_nil?": true,
-      "default": "\"{1,2,3,4,5,6,7}\"",
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "active_days",
-      "type": [
-        "array",
-        "bigint"
-      ]
+      "source": "inserted_at",
+      "type": "utc_datetime_usec"
     },
     {
-      "allow_nil?": true,
-      "default": "[]",
+      "allow_nil?": false,
+      "default": "fragment(\"(now() AT TIME ZONE 'utc')\")",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
       "references": null,
       "scale": null,
       "size": null,
-      "source": "skipped_dates",
-      "type": [
-        "array",
-        "date"
-      ]
+      "source": "updated_at",
+      "type": "utc_datetime_usec"
     },
     {
-      "allow_nil?": true,
-      "default": "\"{\\\"1\\\":\\\"07:00\\\",\\\"2\\\":\\\"07:00\\\",\\\"3\\\":\\\"07:00\\\",\\\"4\\\":\\\"07:00\\\",\\\"5\\\":\\\"07:00\\\",\\\"6\\\":\\\"07:00\\\",\\\"7\\\":\\\"07:00\\\"}\"",
+      "allow_nil?": false,
+      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
-      "references": null,
+      "references": {
+        "deferrable": false,
+        "destination_attribute": "id",
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null,
+        "index?": false,
+        "match_type": null,
+        "match_with": null,
+        "multitenancy": {
+          "attribute": null,
+          "global": null,
+          "strategy": null
+        },
+        "name": "digest_runs_user_id_fkey",
+        "on_delete": null,
+        "on_update": null,
+        "primary_key?": true,
+        "schema": "public",
+        "table": "users"
+      },
       "scale": null,
       "size": null,
-      "source": "digest_times",
-      "type": "map"
-    },
-    {
-      "allow_nil?": true,
-      "default": "\"Etc/UTC\"",
-      "generated?": false,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "timezone",
-      "type": "text"
+      "source": "user_id",
+      "type": "uuid"
     }
   ],
   "base_filter": null,
@@ -97,23 +110,8 @@
   "custom_indexes": [],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "85062B869CD2BBCE449ED9BE1BCD490A425F04C6629965A45650C2BE880BEF92",
-  "identities": [
-    {
-      "all_tenants?": false,
-      "base_filter": null,
-      "index_name": "users_unique_email_index",
-      "keys": [
-        {
-          "type": "atom",
-          "value": "email"
-        }
-      ],
-      "name": "unique_email",
-      "nils_distinct?": true,
-      "where": null
-    }
-  ],
+  "hash": "E75FEDD24C662AD3BAAF6B3B6F2845025DB0FC0B449904BBF1938584C2504960",
+  "identities": [],
   "multitenancy": {
     "attribute": null,
     "global": null,
@@ -121,5 +119,5 @@
   },
   "repo": "Elixir.CheckDay.Repo",
   "schema": null,
-  "table": "users"
+  "table": "digest_runs"
 }

@@ -13,7 +13,7 @@ defmodule CheckDay.Digests.DigestRun do
 
     create :create do
       primary? true
-      accept [:blocks_data, :html_body, :user_id]
+      accept [:blocks_data, :html_body, :podcast_audio, :user_id]
     end
 
     read :latest_for_user do
@@ -28,15 +28,20 @@ defmodule CheckDay.Digests.DigestRun do
 
   attributes do
     uuid_primary_key :id
-    
+
     attribute :blocks_data, :map do
       allow_nil? false
       description "The raw JSON representation of the pulled blocks"
     end
-    
+
     attribute :html_body, :string do
       allow_nil? false
       description "The baked HTML version of the digest email"
+    end
+
+    attribute :podcast_audio, :binary do
+      allow_nil? true
+      description "The generated raw MP3 audio payload from ElevenLabs"
     end
 
     create_timestamp :inserted_at

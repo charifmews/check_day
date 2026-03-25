@@ -15,10 +15,9 @@ defmodule CheckDay.Digests.Changes.NormalizeWeatherLocation do
 
       # Normalize only if the label or type has actively changed to avoid redundant LLM calls
       if Ash.Changeset.changing_attribute?(changeset, :label) or
-         Ash.Changeset.changing_attribute?(changeset, :type) do
-         
+           Ash.Changeset.changing_attribute?(changeset, :type) do
         clean_loc = normalize(label)
-        
+
         # Keep any other config intact but force standard location
         new_config = Map.put(config, "location", clean_loc)
 
@@ -35,6 +34,7 @@ defmodule CheckDay.Digests.Changes.NormalizeWeatherLocation do
 
   defp normalize(nil), do: nil
   defp normalize(""), do: ""
+
   defp normalize(label) do
     prompt = """
     The user entered a weather location string: "#{label}".
@@ -42,9 +42,10 @@ defmodule CheckDay.Digests.Changes.NormalizeWeatherLocation do
     Capitalize it properly. If it's already just a location, return it exactly as is.
     """
 
-    schema = Zoi.map(%{
-      location: Zoi.string(description: "The cleaned, capitalized location string")
-    })
+    schema =
+      Zoi.map(%{
+        location: Zoi.string(description: "The cleaned, capitalized location string")
+      })
 
     try do
       llm_model = ReqLLM.model!(%{provider: :openrouter, id: "google/gemini-3-flash-preview"})

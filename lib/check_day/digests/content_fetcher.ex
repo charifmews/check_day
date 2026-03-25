@@ -25,7 +25,9 @@ defmodule CheckDay.Digests.ContentFetcher do
     |> Task.async_stream(
       fn block ->
         case fetch(block, Map.get(previous_blocks_data, block.id)) do
-          {:ok, results} -> {block, results}
+          {:ok, results} ->
+            {block, results}
+
           {:error, reason} ->
             Logger.warning("Failed to fetch content for block #{block.id}: #{inspect(reason)}")
             {block, []}
@@ -35,7 +37,9 @@ defmodule CheckDay.Digests.ContentFetcher do
       max_concurrency: 3
     )
     |> Enum.map(fn
-      {:ok, result} -> result
+      {:ok, result} ->
+        result
+
       {:exit, reason} ->
         Logger.error("Content fetch task crashed: #{inspect(reason)}")
         nil
@@ -43,7 +47,8 @@ defmodule CheckDay.Digests.ContentFetcher do
     |> Enum.reject(&is_nil/1)
   end
 
-  defp route_firecrawl_strategy(%{type: t} = block, previous_context) when t in [:news, :interest] do
+  defp route_firecrawl_strategy(%{type: t} = block, previous_context)
+       when t in [:news, :interest] do
     fetch_via_hub_crawler(block, previous_context)
   end
 
@@ -99,9 +104,13 @@ defmodule CheckDay.Digests.ContentFetcher do
   # ===========================================================================
 
   @weather_schema Zoi.map(%{
-    headline: Zoi.string(description: "A short, engaging headline (e.g., 'Sunny in Paris', 'Grab an umbrella in London')"),
-    summary: Zoi.string(description: "The concise 1-3 sentence markdown summary.")
-  })
+                    headline:
+                      Zoi.string(
+                        description:
+                          "A short, engaging headline (e.g., 'Sunny in Paris', 'Grab an umbrella in London')"
+                      ),
+                    summary: Zoi.string(description: "The concise 1-3 sentence markdown summary.")
+                  })
 
   defp fetch_via_weather_api(block, _previous_context) do
     location = block.config["location"] || block.label
@@ -116,13 +125,16 @@ defmodule CheckDay.Digests.ContentFetcher do
         lon = geo["lon"]
         display_name = geo["display_name"]
 
-        case Req.get("https://api.open-meteo.com/v1/forecast", params: [
-               latitude: lat,
-               longitude: lon,
-               current: "temperature_2m,weather_code,precipitation,cloud_cover",
-               daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max",
-               timezone: "auto"
-             ]) do
+        case Req.get("https://api.open-meteo.com/v1/forecast",
+               params: [
+                 latitude: lat,
+                 longitude: lon,
+                 current: "temperature_2m,weather_code,precipitation,cloud_cover",
+                 daily:
+                   "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max",
+                 timezone: "auto"
+               ]
+             ) do
           {:ok, %Req.Response{status: 200, body: weather_data}} ->
             prompt = """
             You are a helpful assistant writing a brief weather summary for a daily digest app.
@@ -143,13 +155,17 @@ defmodule CheckDay.Digests.ContentFetcher do
             try do
               result = ReqLLM.generate_object!(llm_model(), prompt, @weather_schema)
 
-              {:ok, [
-                %{
-                  headline: result[:headline] || result["headline"] || "Weather for #{location}",
-                  digest_summary: result[:summary] || result["summary"],
-                  sources: [{"https://open-meteo.com/", "open-meteo.com"}, {"https://nominatim.openstreetmap.org/", "openstreetmap.org"}]
-                }
-              ]}
+              {:ok,
+               [
+                 %{
+                   headline: result[:headline] || result["headline"] || "Weather for #{location}",
+                   digest_summary: result[:summary] || result["summary"],
+                   sources: [
+                     {"https://open-meteo.com/", "open-meteo.com"},
+                     {"https://nominatim.openstreetmap.org/", "openstreetmap.org"}
+                   ]
+                 }
+               ]}
             rescue
               e ->
                 Logger.error("Weather LLM parsing failed: #{inspect(e)}")
@@ -157,8 +173,8 @@ defmodule CheckDay.Digests.ContentFetcher do
             end
 
           _ ->
-             Logger.error("Open-Meteo forecast failed")
-             {:error, "Open-Meteo forecast failed"}
+            Logger.error("Open-Meteo forecast failed")
+            {:error, "Open-Meteo forecast failed"}
         end
 
       _ ->
@@ -172,10 +188,21 @@ defmodule CheckDay.Digests.ContentFetcher do
   # ===========================================================================
 
   @stock_final_schema Zoi.map(%{
-    headline: Zoi.string(description: "A sharp headline with the stock ticker and price movement (e.g. 'AAPL is up 1.5% today')."),
-    digest_markdown: Zoi.string(description: "A rich markdown body synthesizing the stock performance and linking to the recent news stories using markdown links [Title](URL)."),
-    source_urls: Zoi.list(Zoi.string(), description: "A list of the raw news URLs used as sources.")
-  })
+                        headline:
+                          Zoi.string(
+                            description:
+                              "A sharp headline with the stock ticker and price movement (e.g. 'AAPL is up 1.5% today')."
+                          ),
+                        digest_markdown:
+                          Zoi.string(
+                            description:
+                              "A rich markdown body synthesizing the stock performance and linking to the recent news stories using markdown links [Title](URL)."
+                          ),
+                        source_urls:
+                          Zoi.list(Zoi.string(),
+                            description: "A list of the raw news URLs used as sources."
+                          )
+                      })
 
   defp fetch_via_stock_api(block, _previous_context) do
     config = block.config || %{}
@@ -190,6 +217,7 @@ defmodule CheckDay.Digests.ContentFetcher do
       case Req.get(url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
         {:ok, %Req.Response{status: 200, body: body}} ->
           Jason.encode!(body)
+
         _ ->
           nil
       end
@@ -200,6 +228,7 @@ defmodule CheckDay.Digests.ContentFetcher do
       case Req.get(rss_url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
         {:ok, %Req.Response{status: 200, body: body}} ->
           if is_binary(body), do: String.slice(body, 0, 10000), else: "No news parsing"
+
         _ ->
           nil
       end
@@ -230,13 +259,14 @@ defmodule CheckDay.Digests.ContentFetcher do
       raw_source_urls = result[:source_urls] || result["source_urls"] || []
       sources = Enum.map(raw_source_urls, &source_tuple/1)
 
-      {:ok, [
-        %{
-          headline: result[:headline] || result["headline"] || "#{symbol} Stock Update",
-          digest_summary: result[:digest_markdown] || result["digest_markdown"],
-          sources: sources
-        }
-      ]}
+      {:ok,
+       [
+         %{
+           headline: result[:headline] || result["headline"] || "#{symbol} Stock Update",
+           digest_summary: result[:digest_markdown] || result["digest_markdown"],
+           sources: sources
+         }
+       ]}
     rescue
       e ->
         Logger.error("Failed to synthesize stock data: #{inspect(e)}")
@@ -249,22 +279,42 @@ defmodule CheckDay.Digests.ContentFetcher do
   # ===========================================================================
 
   @source_schema Zoi.map(%{
-    urls: Zoi.list(Zoi.string(), description: "The exact, direct URLs (must include https://) to the 'latest news', 'discussions', or 'blog' indexes of the top 3 best community sites for this topic.")
-          |> Zoi.min(1)
-          |> Zoi.max(5)
-  })
+                   urls:
+                     Zoi.list(Zoi.string(),
+                       description:
+                         "The exact, direct URLs (must include https://) to the 'latest news', 'discussions', or 'blog' indexes of the top 3 best community sites for this topic."
+                     )
+                     |> Zoi.min(1)
+                     |> Zoi.max(5)
+                 })
 
   @hub_schema Zoi.map(%{
-    discussions: Zoi.list(Zoi.string(), description: "Top active discussion titles with their full absolute URLs, formatted strictly as markdown links: [Title](URL).")
-                 |> Zoi.max(5),
-    community_sentiment: Zoi.string(description: "A 1-2 sentence summary of the general community focus right now based on these recent topics.")
-  })
+                discussions:
+                  Zoi.list(Zoi.string(),
+                    description:
+                      "Top active discussion titles with their full absolute URLs, formatted strictly as markdown links: [Title](URL)."
+                  )
+                  |> Zoi.max(5),
+                community_sentiment:
+                  Zoi.string(
+                    description:
+                      "A 1-2 sentence summary of the general community focus right now based on these recent topics."
+                  )
+              })
 
   @final_schema Zoi.map(%{
-    headline: Zoi.string(description: "An overarching headline for the digest block."),
-    digest_markdown: Zoi.string(description: "A rich markdown body synthesizing the recent community discussions across all sources. Include inline markdown links [Title](URL) to the most important discussions."),
-    source_urls: Zoi.list(Zoi.string(), description: "A list of strings of the raw URLs used as sources.")
-  })
+                  headline:
+                    Zoi.string(description: "An overarching headline for the digest block."),
+                  digest_markdown:
+                    Zoi.string(
+                      description:
+                        "A rich markdown body synthesizing the recent community discussions across all sources. Include inline markdown links [Title](URL) to the most important discussions."
+                    ),
+                  source_urls:
+                    Zoi.list(Zoi.string(),
+                      description: "A list of strings of the raw URLs used as sources."
+                    )
+                })
 
   defp fetch_via_hub_crawler(block, previous_context) do
     delta_str = delta_instruction(previous_context)
@@ -285,10 +335,13 @@ defmodule CheckDay.Digests.ContentFetcher do
       try do
         result = ReqLLM.generate_object!(llm_model(), prompt, @source_schema)
         raw_urls = result[:urls] || result["urls"] || []
-        
+
         raw_urls
         |> Task.async_stream(&verify_and_recover_url(&1, topic), timeout: 35_000)
-        |> Enum.map(fn {:ok, res} -> res; _ -> nil end)
+        |> Enum.map(fn
+          {:ok, res} -> res
+          _ -> nil
+        end)
         |> Enum.reject(&is_nil/1)
         |> Enum.uniq()
       rescue
@@ -298,38 +351,51 @@ defmodule CheckDay.Digests.ContentFetcher do
       end
 
     if urls == [] do
-      {:ok, [%{headline: block.label, digest_summary: "No relevant community hubs could be found for this topic.", sources: []}]}
+      {:ok,
+       [
+         %{
+           headline: block.label,
+           digest_summary: "No relevant community hubs could be found for this topic.",
+           sources: []
+         }
+       ]}
     else
       # We use Task.async_stream to scrape all hubs concurrently
       all_findings =
         urls
-        |> Task.async_stream(fn url ->
-          case Firecrawl.scrape_and_extract_from_url(
-                 url: url,
-                 formats: ["markdown"],
-                 only_main_content: true,
-                 timeout: 45_000
-               ) do
-            {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} ->
-              if markdown && markdown != "" do
-                extracted = extract_hub(url, markdown, topic, delta_str)
-                has_discussions = case extracted[:discussions] || extracted["discussions"] do
-                  list when is_list(list) and length(list) > 0 -> true
-                  _ -> false
-                end
+        |> Task.async_stream(
+          fn url ->
+            case Firecrawl.scrape_and_extract_from_url(
+                   url: url,
+                   formats: ["markdown"],
+                   only_main_content: true,
+                   timeout: 45_000
+                 ) do
+              {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} ->
+                if markdown && markdown != "" do
+                  extracted = extract_hub(url, markdown, topic, delta_str)
 
-                if has_discussions do
-                  %{url: url, findings: extracted}
+                  has_discussions =
+                    case extracted[:discussions] || extracted["discussions"] do
+                      list when is_list(list) and length(list) > 0 -> true
+                      _ -> false
+                    end
+
+                  if has_discussions do
+                    %{url: url, findings: extracted}
+                  else
+                    nil
+                  end
                 else
                   nil
                 end
-              else
+
+              _ ->
                 nil
-              end
-            _ ->
-              nil
-          end
-        end, timeout: 50_000)
+            end
+          end,
+          timeout: 50_000
+        )
         |> Enum.map(fn
           {:ok, result} -> result
           {:exit, _} -> nil
@@ -337,9 +403,17 @@ defmodule CheckDay.Digests.ContentFetcher do
         |> Enum.reject(&is_nil/1)
 
       if all_findings == [] do
-         {:ok, [%{headline: block.label, digest_summary: "The community has been quiet on this topic over the last 24 hours. No recent discussions were detected.", sources: []}]}
+        {:ok,
+         [
+           %{
+             headline: block.label,
+             digest_summary:
+               "The community has been quiet on this topic over the last 24 hours. No recent discussions were detected.",
+             sources: []
+           }
+         ]}
       else
-         combine_hub_findings(topic, all_findings)
+        combine_hub_findings(topic, all_findings)
       end
     end
   end
@@ -402,13 +476,14 @@ defmodule CheckDay.Digests.ContentFetcher do
       raw_source_urls = result[:source_urls] || result["source_urls"] || []
       sources = Enum.map(raw_source_urls, &source_tuple/1)
 
-      {:ok, [
-        %{
-          headline: result[:headline] || result["headline"] || topic,
-          digest_summary: result[:digest_markdown] || result["digest_markdown"],
-          sources: sources
-        }
-      ]}
+      {:ok,
+       [
+         %{
+           headline: result[:headline] || result["headline"] || topic,
+           digest_summary: result[:digest_markdown] || result["digest_markdown"],
+           sources: sources
+         }
+       ]}
     rescue
       e ->
         Logger.error("Failed to combine findings: #{inspect(e)}")
@@ -416,28 +491,50 @@ defmodule CheckDay.Digests.ContentFetcher do
     end
   end
 
-
   # ===========================================================================
   # STRATEGY: ADVANCED COMPETITOR CRAWLER (For :competitor)
   # ===========================================================================
 
   @competitor_source_schema Zoi.map(%{
-    urls: Zoi.list(Zoi.string(), description: "The exact, absolute URLs to the OFFICIAL 'blog', 'changelog', or 'newsroom' pages of the company.")
-          |> Zoi.min(2)
-          |> Zoi.max(3)
-  })
+                              urls:
+                                Zoi.list(Zoi.string(),
+                                  description:
+                                    "The exact, absolute URLs to the OFFICIAL 'blog', 'changelog', or 'newsroom' pages of the company."
+                                )
+                                |> Zoi.min(2)
+                                |> Zoi.max(3)
+                            })
 
   @competitor_intel_schema Zoi.map(%{
-    announcements: Zoi.list(Zoi.string(), description: "Top recent product announcements or feature releases with their full absolute URLs, formatted strictly as markdown links: [Title](URL).")
-                   |> Zoi.max(5),
-    strategic_focus: Zoi.string(description: "A 1-2 sentence summary of what this company is focusing heavily on right now based on these updates.")
-  })
+                             announcements:
+                               Zoi.list(Zoi.string(),
+                                 description:
+                                   "Top recent product announcements or feature releases with their full absolute URLs, formatted strictly as markdown links: [Title](URL)."
+                               )
+                               |> Zoi.max(5),
+                             strategic_focus:
+                               Zoi.string(
+                                 description:
+                                   "A 1-2 sentence summary of what this company is focusing heavily on right now based on these updates."
+                               )
+                           })
 
   @competitor_final_schema Zoi.map(%{
-    headline: Zoi.string(description: "A sharp headline capturing the competitor's recent momentum."),
-    digest_markdown: Zoi.string(description: "A rich markdown body synthesizing the recent announcements. Include inline markdown links [Title](URL). Format beautifully as a bulleted list where appropriate."),
-    source_urls: Zoi.list(Zoi.string(), description: "A list of strings of the raw URLs used as sources.")
-  })
+                             headline:
+                               Zoi.string(
+                                 description:
+                                   "A sharp headline capturing the competitor's recent momentum."
+                               ),
+                             digest_markdown:
+                               Zoi.string(
+                                 description:
+                                   "A rich markdown body synthesizing the recent announcements. Include inline markdown links [Title](URL). Format beautifully as a bulleted list where appropriate."
+                               ),
+                             source_urls:
+                               Zoi.list(Zoi.string(),
+                                 description: "A list of strings of the raw URLs used as sources."
+                               )
+                           })
 
   defp fetch_via_competitor_crawler(block, previous_context) do
     delta_str = delta_instruction(previous_context)
@@ -458,10 +555,13 @@ defmodule CheckDay.Digests.ContentFetcher do
       try do
         result = ReqLLM.generate_object!(llm_model(), prompt, @competitor_source_schema)
         raw_urls = result[:urls] || result["urls"] || []
-        
+
         raw_urls
         |> Task.async_stream(&verify_and_recover_url(&1, company_name), timeout: 35_000)
-        |> Enum.map(fn {:ok, res} -> res; _ -> nil end)
+        |> Enum.map(fn
+          {:ok, res} -> res
+          _ -> nil
+        end)
         |> Enum.reject(&is_nil/1)
         |> Enum.uniq()
       rescue
@@ -471,36 +571,50 @@ defmodule CheckDay.Digests.ContentFetcher do
       end
 
     if urls == [] do
-      {:ok, [%{headline: block.label, digest_summary: "No official announcement pages could be pinpointed for this company.", sources: []}]}
+      {:ok,
+       [
+         %{
+           headline: block.label,
+           digest_summary: "No official announcement pages could be pinpointed for this company.",
+           sources: []
+         }
+       ]}
     else
       all_findings =
         urls
-        |> Task.async_stream(fn url ->
-          case Firecrawl.scrape_and_extract_from_url(
-                 url: url,
-                 formats: ["markdown"],
-                 only_main_content: true,
-                 timeout: 45_000
-               ) do
-            {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} ->
-              if markdown && markdown != "" do
-                extracted = extract_competitor(url, markdown, company_name, delta_str)
-                has_announcements = case extracted[:announcements] || extracted["announcements"] do
-                  list when is_list(list) and length(list) > 0 -> true
-                  _ -> false
-                end
+        |> Task.async_stream(
+          fn url ->
+            case Firecrawl.scrape_and_extract_from_url(
+                   url: url,
+                   formats: ["markdown"],
+                   only_main_content: true,
+                   timeout: 45_000
+                 ) do
+              {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} ->
+                if markdown && markdown != "" do
+                  extracted = extract_competitor(url, markdown, company_name, delta_str)
 
-                if has_announcements do
-                  %{url: url, findings: extracted}
+                  has_announcements =
+                    case extracted[:announcements] || extracted["announcements"] do
+                      list when is_list(list) and length(list) > 0 -> true
+                      _ -> false
+                    end
+
+                  if has_announcements do
+                    %{url: url, findings: extracted}
+                  else
+                    nil
+                  end
                 else
                   nil
                 end
-              else
+
+              _ ->
                 nil
-              end
-            _ -> nil
-          end
-        end, timeout: 50_000)
+            end
+          end,
+          timeout: 50_000
+        )
         |> Enum.map(fn
           {:ok, result} -> result
           {:exit, _} -> nil
@@ -508,9 +622,17 @@ defmodule CheckDay.Digests.ContentFetcher do
         |> Enum.reject(&is_nil/1)
 
       if all_findings == [] do
-         {:ok, [%{headline: block.label, digest_summary: "No major product announcements or news detected in the last 14-30 days.", sources: []}]}
+        {:ok,
+         [
+           %{
+             headline: block.label,
+             digest_summary:
+               "No major product announcements or news detected in the last 14-30 days.",
+             sources: []
+           }
+         ]}
       else
-         combine_competitor_findings(company_name, all_findings)
+        combine_competitor_findings(company_name, all_findings)
       end
     end
   end
@@ -570,20 +692,20 @@ defmodule CheckDay.Digests.ContentFetcher do
       raw_source_urls = result[:source_urls] || result["source_urls"] || []
       sources = Enum.map(raw_source_urls, &source_tuple/1)
 
-      {:ok, [
-        %{
-          headline: result[:headline] || result["headline"] || company_name,
-          digest_summary: result[:digest_markdown] || result["digest_markdown"],
-          sources: sources
-        }
-      ]}
+      {:ok,
+       [
+         %{
+           headline: result[:headline] || result["headline"] || company_name,
+           digest_summary: result[:digest_markdown] || result["digest_markdown"],
+           sources: sources
+         }
+       ]}
     rescue
       e ->
         Logger.error("Failed to combine competitor findings: #{inspect(e)}")
         {:error, "Failed to combine findings"}
     end
   end
-
 
   # ===========================================================================
   # QUERY BUILDER & SHARED HELPERS
@@ -919,18 +1041,26 @@ defmodule CheckDay.Digests.ContentFetcher do
   # ===========================================================================
 
   @validity_schema Zoi.map(%{
-    soft_404: Zoi.boolean(description: "True if the markdown page clearly indicates a '404', 'Page Not Found', 'Access Denied', or is just an empty 'Search Results' template. False if it contains genuine articles or discussions.")
-  })
+                     soft_404:
+                       Zoi.boolean(
+                         description:
+                           "True if the markdown page clearly indicates a '404', 'Page Not Found', 'Access Denied', or is just an empty 'Search Results' template. False if it contains genuine articles or discussions."
+                       )
+                   })
 
   defp verify_and_recover_url(url, search_context) do
     Logger.info("Deep Verifying URL content via LLM evaluation: #{url}")
 
     case Firecrawl.scrape_and_extract_from_url(url: url, formats: ["markdown"]) do
-      {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}} when is_binary(markdown) ->
+      {:ok, %Req.Response{status: 200, body: %{"data" => %{"markdown" => markdown}}}}
+      when is_binary(markdown) ->
         if valid_content_page?(markdown) do
           url
         else
-          Logger.warning("URL #{url} proved to be a Soft 404 or empty template! Recovering via Search...")
+          Logger.warning(
+            "URL #{url} proved to be a Soft 404 or empty template! Recovering via Search..."
+          )
+
           recover_url_via_firecrawl(search_context)
         end
 
@@ -942,7 +1072,7 @@ defmodule CheckDay.Digests.ContentFetcher do
 
   defp valid_content_page?(markdown) do
     snippet = String.slice(markdown, 0, 1500)
-    
+
     prompt = """
     Analyze the following markdown snippet from a scraped website. 
     Does it appear to be a '404 Page Not Found', a 'Sorry, page does not exist' error, an 'Access Denied' block, or a completely empty 'Search Results' container without articles?
@@ -961,7 +1091,7 @@ defmodule CheckDay.Digests.ContentFetcher do
 
   defp recover_url_via_firecrawl(search_context) do
     query = "#{search_context} official blog newsroom latest discussions"
-    
+
     case Firecrawl.search_and_scrape(
            query: query,
            limit: 1,
@@ -976,7 +1106,9 @@ defmodule CheckDay.Digests.ContentFetcher do
         nil
     end
   end
+
   defp delta_instruction(nil), do: ""
+
   defp delta_instruction(prev) do
     "\n\nCRITICAL CONTEXT: Here is the data from exactly the last successful run: #{inspect(prev)}\nHighlight and focus exclusively on NEW developments that have happened since then!"
   end
