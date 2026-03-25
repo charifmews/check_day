@@ -1,7 +1,3 @@
----
-trigger: always_on
----
-
 # Check.Day
 
 **Check.Day** is designed to replace the blaring morning alarm with hyper-personalized, high-signal intelligence briefings. It delivers verified facts, industry news, competitor updates, and weather forecasts either as beautifully designed emails or studio-quality morning podcasts.
