@@ -581,10 +581,9 @@ defmodule CheckDayWeb.DashboardLive do
 
   defp format_blocks_for_agent(blocks) do
     blocks
-    |> Enum.map(fn block ->
+    |> Enum.map_join(", ", fn block ->
       "block_id: #{block.id}, type: #{block.type}, label: #{block.label}"
     end)
-    |> Enum.join(", ")
   end
 
   defp first_digest_time(digest_times) do

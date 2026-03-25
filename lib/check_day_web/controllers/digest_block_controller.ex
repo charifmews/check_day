@@ -1,8 +1,8 @@
 defmodule CheckDayWeb.DigestBlockController do
   use CheckDayWeb, :controller
 
-  alias CheckDay.Digests.DigestBlock
   alias CheckDay.Accounts.User
+  alias CheckDay.Digests.DigestBlock
 
   require Ash.Query
 
@@ -346,8 +346,7 @@ defmodule CheckDayWeb.DigestBlockController do
   defp format_errors(%Ash.Error.Invalid{} = error) do
     error
     |> Map.get(:errors, [])
-    |> Enum.map(& &1.message)
-    |> Enum.join(", ")
+    |> Enum.map_join(", ", & &1.message)
   end
 
   defp format_errors(other), do: inspect(other)

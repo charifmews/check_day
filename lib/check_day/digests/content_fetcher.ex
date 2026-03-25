@@ -227,7 +227,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     news_xml =
       case Req.get(rss_url, headers: [{"User-Agent", "Mozilla/5.0"}]) do
         {:ok, %Req.Response{status: 200, body: body}} ->
-          if is_binary(body), do: String.slice(body, 0, 10000), else: "No news parsing"
+          if is_binary(body), do: String.slice(body, 0, 10_000), else: "No news parsing"
 
         _ ->
           nil
@@ -377,7 +377,7 @@ defmodule CheckDay.Digests.ContentFetcher do
 
                   has_discussions =
                     case extracted[:discussions] || extracted["discussions"] do
-                      list when is_list(list) and length(list) > 0 -> true
+                      list when is_list(list) and list != [] -> true
                       _ -> false
                     end
 
@@ -448,7 +448,7 @@ defmodule CheckDay.Digests.ContentFetcher do
   defp combine_hub_findings(topic, all_findings) do
     findings_text =
       all_findings
-      |> Enum.map(fn f ->
+      |> Enum.map_join("\n\n", fn f ->
         """
         SOURCE HUB: #{f.url}
         DISCUSSIONS:
@@ -456,7 +456,6 @@ defmodule CheckDay.Digests.ContentFetcher do
         SENTIMENT: #{f.findings[:community_sentiment] || f.findings["community_sentiment"]}
         """
       end)
-      |> Enum.join("\n\n")
 
     prompt = """
     You are generating a daily digest block for the topic: "#{topic}".
@@ -596,7 +595,7 @@ defmodule CheckDay.Digests.ContentFetcher do
 
                   has_announcements =
                     case extracted[:announcements] || extracted["announcements"] do
-                      list when is_list(list) and length(list) > 0 -> true
+                      list when is_list(list) and list != [] -> true
                       _ -> false
                     end
 
@@ -664,7 +663,7 @@ defmodule CheckDay.Digests.ContentFetcher do
   defp combine_competitor_findings(company_name, all_findings) do
     findings_text =
       all_findings
-      |> Enum.map(fn f ->
+      |> Enum.map_join("\n\n", fn f ->
         """
         SOURCE: #{f.url}
         ANNOUNCEMENTS:
@@ -672,7 +671,6 @@ defmodule CheckDay.Digests.ContentFetcher do
         STRATEGIC FOCUS: #{f.findings[:strategic_focus] || f.findings["strategic_focus"]}
         """
       end)
-      |> Enum.join("\n\n")
 
     prompt = """
     You are generating a daily digest block for competitor intelligence on: "#{company_name}".
@@ -916,10 +914,9 @@ defmodule CheckDay.Digests.ContentFetcher do
     indexed =
       results
       |> Enum.with_index(1)
-      |> Enum.map(fn {r, i} ->
+      |> Enum.map_join("\n", fn {r, i} ->
         "[#{i}] #{r.headline}: #{String.slice(r.digest_summary || "", 0, 100)}"
       end)
-      |> Enum.join("\n")
 
     prompt = """
     TOPIC: #{topic}
@@ -972,11 +969,10 @@ defmodule CheckDay.Digests.ContentFetcher do
     summaries =
       results
       |> Enum.with_index(1)
-      |> Enum.map(fn {r, i} ->
+      |> Enum.map_join("\n\n", fn {r, i} ->
         domain = elem(source_tuple(r.source_url), 1)
         "[#{i}] #{r.headline} (#{domain}): #{r.digest_summary}"
       end)
-      |> Enum.join("\n\n")
 
     prompt = """
     TOPIC: #{topic}
@@ -1097,7 +1093,7 @@ defmodule CheckDay.Digests.ContentFetcher do
            limit: 1,
            scrapeOptions: %{formats: ["html"]}
          ) do
-      {:ok, %{"data" => [%{"url" => recovered_url} | _]}} ->
+      {:ok, %Req.Response{status: 200, body: %{"data" => [%{"url" => recovered_url} | _]}}} ->
         Logger.info("Firecrawl successfully recovered a working URL: #{recovered_url}")
         recovered_url
 

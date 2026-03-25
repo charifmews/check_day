@@ -9,14 +9,12 @@ defmodule CheckDay.Digests.PodcastGenerator do
   def generate_audio(sections, voice_id \\ "21m00Tcm4TlvDq8ikWAM") do
     text_content =
       sections
-      |> Enum.map(fn {block, results} ->
+      |> Enum.map_join("\n\n", fn {block, results} ->
         results_text =
-          Enum.map(results, fn r -> "- #{r[:headline]}: #{r[:digest_summary]}" end)
-          |> Enum.join("\n")
+          Enum.map_join(results, "\n", fn r -> "- #{r[:headline]}: #{r[:digest_summary]}" end)
 
         "Topic: #{block.label}\n#{results_text}"
       end)
-      |> Enum.join("\n\n")
 
     script = generate_script(text_content)
 

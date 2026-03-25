@@ -83,7 +83,8 @@ defmodule CheckDay.MixProject do
       {:req_llm, "~> 1.8"},
       {:tz, "~> 0.28"},
       {:earmark, "~> 1.4"},
-      {:hammer, "~> 6.1"}
+      {:hammer, "~> 6.1"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 

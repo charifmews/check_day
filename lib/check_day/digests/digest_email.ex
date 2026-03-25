@@ -31,8 +31,7 @@ defmodule CheckDay.Digests.DigestEmail do
 
     sections_html =
       sections
-      |> Enum.map(fn {block, results} -> render_section(block, results) end)
-      |> Enum.join("\n")
+      |> Enum.map_join("\n", fn {block, results} -> render_section(block, results) end)
 
     """
     <!DOCTYPE html>
@@ -136,8 +135,7 @@ defmodule CheckDay.Digests.DigestEmail do
   defp render_section(block, results) do
     results_html =
       results
-      |> Enum.map(&render_result/1)
-      |> Enum.join("\n")
+      |> Enum.map_join("\n", &render_result/1)
 
     """
     <tr>
@@ -180,12 +178,11 @@ defmodule CheckDay.Digests.DigestEmail do
         valid_sources ->
           links =
             valid_sources
-            |> Enum.map(fn {url, domain} ->
+            |> Enum.map_join(" <span style='color: #d1d5db;'>·</span> ", fn {url, domain} ->
               """
               <a href="#{url}" style="color: #fd7831; font-size: 12px; font-weight: 600; text-decoration: none;">#{escape(domain)}</a>
               """
             end)
-            |> Enum.join(" <span style='color: #d1d5db;'>·</span> ")
 
           """
           <p class="text-muted" style="margin: 12px 0 0; color: #9ca3af; font-size: 12px;">
