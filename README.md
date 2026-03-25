@@ -1,12 +1,10 @@
 # Check.Day
 
-**Check.Day** is designed to replace the blaring morning alarm with hyper-personalized, high-signal intelligence briefings. It delivers verified facts, industry news, competitor updates, and weather forecasts either as beautifully designed emails or studio-quality morning podcasts.
-
-With a heavy emphasis on zero AI hallucinations, Check.Day utilizes robust retrieval mechanisms—from official changelogs to financial APIs—to ensure every intel brief is grounded in absolute truth and we always expose the sources.
+**Check.Day** cures mindless morning doomscrolling by replacing your blaring alarm with a hyper-personalized, source-verified morning digest (competitors, stocks, weather, news, interests) delivered as a studio-quality commute podcast or fast-reading email.
 
 ## Check.Day ❤️ OpenSource 
 
-Check.day created the following open source Elixir packages:
+For building Check.day we created the following open source Elixir packages:
 - [Firecrawl](https://hex.pm/packages/firecrawl)
 - [ElevenLabs](https://hex.pm/packages/eleven_labs)
 
