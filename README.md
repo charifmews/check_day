@@ -5,7 +5,7 @@
 ## Check.Day ❤️ OpenSource 
 
 For building Check.day we created the following open source Elixir packages:
-- [Firecrawl](https://hex.pm/packages/firecrawl)
+- [Firecrawl](https://hex.pm/packages/firecrawl) (Transfered to Firecrawl and just became an official Firecrawl Elixir SDK 🥳: https://github.com/firecrawl/firecrawl/pull/3239)
 - [ElevenLabs](https://hex.pm/packages/eleven_labs)
 
 ## Features
