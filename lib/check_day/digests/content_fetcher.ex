@@ -323,9 +323,10 @@ defmodule CheckDay.Digests.ContentFetcher do
 
     prompt = """
     The user wants to track community news and active discussions about: "#{topic}".
-    Identify the absolute best specific forum, community aggregator, or trusted news site index pages for this.
+    Identify the absolute best specific forum, community aggregator, RSS feeds, or trusted news site index pages for this.
     Instead of just the domain, provide the FULL, direct URL to their 'latest' or 'news' index page.
     For example, instead of 'news.yCombinator.com', use 'https://news.ycombinator.com'.
+    Another example is using https://feeds.finance.yahoo.com/rss/2.0/headline?s=AAPL&region=US&lang=en-US when user wants to know more about Apple stock.
     Instead of 'elixirforum.com', use 'https://elixirforum.com/latest'.
     IMPORTANT: Do NOT suggest reddit.com, twitter.com, x.com, facebook.com, or linkedin.com, as they block scrapers.
     Provide up to 5 URLs. ONLY provide URLs that you are 100% certain exist. If you only know 1 valid URL, return just 1.
@@ -1070,7 +1071,7 @@ defmodule CheckDay.Digests.ContentFetcher do
     snippet = String.slice(markdown, 0, 1500)
 
     prompt = """
-    Analyze the following markdown snippet from a scraped website. 
+    Analyze the following markdown snippet from a scraped website.
     Does it appear to be a '404 Page Not Found', a 'Sorry, page does not exist' error, an 'Access Denied' block, or a completely empty 'Search Results' container without articles?
 
     CONTENT SNIPPET:
