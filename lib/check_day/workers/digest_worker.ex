@@ -52,11 +52,8 @@ defmodule CheckDay.Workers.DigestWorker do
 
         sections = ContentFetcher.fetch_all(blocks, previous_blocks_data)
 
-        podcast_audio =
-          case CheckDay.Digests.PodcastGenerator.generate_audio(sections) do
-            {:ok, bytes} -> bytes
-            _ -> nil
-          end
+        # Temporarily disabled to stay under ElevenLabs API limit
+        podcast_audio = nil
 
         # We extract the bare HTML template wrapper organically for posterity caching
         html_body = DigestEmail.render_html(user, date, sections)
